@@ -1,11 +1,8 @@
 import { Article } from '../types';
+import { readFileSync } from "fs";
+export const repository: Article[] = (() => {
+	const jsonString = readFileSync("article_mock.json");
+	const items = JSON.parse(jsonString.toString());
+	return items;
+})();
 
-export const repository: Article[] = [
-	{
-		id: "123",
-		title: 'Przykładowy artykuł',
-		sourceName: "TVN24",
-		sourceUrl: 'http://www.tvn24.pl/',
-		characteristic: false,
-	}
-]
