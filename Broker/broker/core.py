@@ -41,8 +41,12 @@ class TaskBuilder:
         tasks = []
         for _task in self.__tasks:
             try:
-                source_endpoint = self.__build_source_endpoint(_task['source'])
-                destination_endpoint = self.__build_destination_endpoint(_task['destination'])
+                name = None
+                if 'name' in _task:
+                    name = _task['name']
+
+                source_endpoint = self.__build_source_endpoint(_task['source'], task_name=name)
+                destination_endpoint = self.__build_destination_endpoint(_task['destination'], task_name=name)
 
                 interceptors = None
                 if 'interceptors' in _task:
@@ -54,15 +58,15 @@ class TaskBuilder:
 
         return tasks
 
-    def __build_source_endpoint(self, _source):
-        endpoint, source_class_name = self.__build_endpoint(_source)
+    def __build_source_endpoint(self, _source, **kwargs):
+        endpoint, source_class_name = self.__build_endpoint(_source, **kwargs)
         if not issubclass(type(endpoint), endpoints.SourceEndpointBase):
             raise TaskBuilderException(f"{source_class_name} class is not subclass of endpoints.SourceEndpointBase")
 
         return endpoint
 
-    def __build_destination_endpoint(self, _source):
-        endpoint, source_class_name = self.__build_endpoint(_source)
+    def __build_destination_endpoint(self, _source, **kwargs):
+        endpoint, source_class_name = self.__build_endpoint(_source, **kwargs)
         if not issubclass(type(endpoint), endpoints.DestinationEndpointBase):
             raise TaskBuilderException(
                 f"{source_class_name} class is not subclass of endpoints.DestinationEndpointBase")
@@ -83,11 +87,14 @@ class TaskBuilder:
         return interceptors
 
     @staticmethod
-    def __build_endpoint(_endpoint):
+    def __build_endpoint(_endpoint, **kwargs):
         source_class_name = _endpoint['class']
         args = _endpoint['args']
 
-        endpoint = ClassLoader.load(source_class_name, _endpoint, **args)
+        for key in args:
+            kwargs[key] = args[key]
+
+        endpoint = ClassLoader.load(source_class_name, _endpoint, **kwargs)
 
         if endpoint is None:
             raise TaskBuilderException(f"Could not load {source_class_name} class.")

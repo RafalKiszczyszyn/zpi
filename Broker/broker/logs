@@ -11,3 +11,7 @@
 [17/08/2021 23:36:35] Pushing
 [17/08/2021 23:38:23] Pulling
 [17/08/2021 23:38:23] Exception: WTF
+[17/08/2021 23:53:21] Exception: 'HttpSourceEndpoint' object has no attribute 'task_name'
+[17/08/2021 23:57:32] Exception: 'HttpSourceEndpoint' object has no attribute 'task_name'
+[18/08/2021 00:04:53] Test task - Pulling
+[18/08/2021 00:04:53] Test task - Pushing

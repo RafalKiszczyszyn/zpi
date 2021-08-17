@@ -8,6 +8,7 @@ List of tasks.
 """
 TASKS = [
     {
+        "name": "Test task",
         "source": {
             "class": "broker.endpoints.HttpSourceEndpoint",
             "args": {
