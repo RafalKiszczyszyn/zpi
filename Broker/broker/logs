@@ -1,17 +1,2 @@
- Elo
-2021-07-19 23:04:45.827505: Elo
-2021-07-19 23:04:56.864842: Elo
-[17/08/2021 19:53:03] Hello world!
-[17/08/2021 23:12:51] Pulling
-[17/08/2021 23:13:25] Pulling
-[17/08/2021 23:13:25] Pushing
-[17/08/2021 23:13:30] Pulling
-[17/08/2021 23:13:30] Pushing
-[17/08/2021 23:36:35] Pulling
-[17/08/2021 23:36:35] Pushing
-[17/08/2021 23:38:23] Pulling
-[17/08/2021 23:38:23] Exception: WTF
-[17/08/2021 23:53:21] Exception: 'HttpSourceEndpoint' object has no attribute 'task_name'
-[17/08/2021 23:57:32] Exception: 'HttpSourceEndpoint' object has no attribute 'task_name'
-[18/08/2021 00:04:53] Test task - Pulling
-[18/08/2021 00:04:53] Test task - Pushing
+[18/08/2021 19:53:28] (Test task) GET https://api.github.com/events with data: None.
+[18/08/2021 19:53:28] (Test task) Status = 200. Fetched = 195967 bytes.

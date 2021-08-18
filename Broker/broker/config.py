@@ -1,7 +1,7 @@
 """
 Class name of logger implementation
 """
-LOGGER = 'broker.logging.FileLogger'
+LOGGER = 'broker.loggers.FileLogger'
 
 """
 List of tasks.
@@ -12,7 +12,7 @@ TASKS = [
         "source": {
             "class": "broker.endpoints.HttpSourceEndpoint",
             "args": {
-                'url': 'url', 'method': 'POST', 'params': ['params']
+                'url': 'https://api.github.com/events', 'method': 'GET'
             }
         },
         "destination": {
@@ -20,7 +20,6 @@ TASKS = [
             "args": {
                 'url': 'url', 'method': 'POST', 'params': ['params']
             }
-        },
-        "interceptors": ['broker.interceptors.Interceptor', 'broker.interceptors.Interceptor']
+        }
     }
 ]

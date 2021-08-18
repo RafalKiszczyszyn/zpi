@@ -1,8 +1,8 @@
 import importlib
 import inspect
 
-from broker import endpoints, config, logging, interceptors as inters
-from broker.logging import log_exception
+from broker import endpoints, config, loggers, interceptors as inters
+from broker.loggers import log_exception
 
 
 class Task:
@@ -113,8 +113,14 @@ class ClassLoader:
 
     @staticmethod
     def load(full_class_name, *args, **kwargs):
+        if '.' not in full_class_name:
+            raise ClassLoaderException(f"{full_class_name} must be a full class name.")
+
         module_name, class_name = ClassLoader.__get_module_name_and_class_name(full_class_name)
-        module = importlib.import_module(module_name)
+        try:
+            module = importlib.import_module(module_name)
+        except ModuleNotFoundError:
+            raise ClassLoaderException(f"Module specified in {full_class_name} does not exist.")
 
         if hasattr(module, class_name):
             _class = getattr(module, class_name)
@@ -133,7 +139,7 @@ class ClassLoader:
                 if inspect.isclass(_class) \
                 else None
         except Exception as e:
-            raise ClassLoaderException(f"Failed to load class with message: {e}")
+            raise ClassLoaderException(f"Failed to load {type(_class)} with message: {e}.")
 
 
 def execute(tasks):
@@ -152,8 +158,8 @@ def get_tasks_from_config():
 def startup():
     if hasattr(config, 'LOGGER'):
         logger = ClassLoader.load(config.LOGGER)
-        if issubclass(type(logger), logging.LoggerBase):
-            logging.logger = logger
+        if issubclass(type(logger), loggers.LoggerBase):
+            loggers.logger = logger
 
     tasks = []
     if hasattr(config, 'TASKS'):
