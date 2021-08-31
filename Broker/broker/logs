@@ -1,0 +1,2 @@
+[18/08/2021 19:53:28] (Test task) GET https://api.github.com/events with data: None.
+[18/08/2021 19:53:28] (Test task) Status = 200. Fetched = 195967 bytes.
