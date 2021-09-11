@@ -1,7 +1,7 @@
-const express = require('express');
-const axios = require('axios');
-const config = require('./config');
-const { ConsoleLogger } = require('./loggers')
+import express from 'express';
+import axios from 'axios';
+import config from './config';
+import { ConsoleLogger } from './loggers'
 
 const app = express();
 const consoleLogger = ConsoleLogger("EventBus")
@@ -26,6 +26,6 @@ app.post('/events', (req, res) => {
 	res.sendStatus(200);
 });
 
-app.listen(config.PORT, (req, res) => {
+app.listen(config.PORT, () => {
 	consoleLogger("Service listening on port: " + config.PORT);
 });
