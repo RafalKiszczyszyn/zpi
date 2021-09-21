@@ -1,10 +1,11 @@
 import express from 'express';
 import config from './config';
-import { Log } from './utils';
+import { ConsoleLogger } from './utils';
 import { graphqlHTTP } from 'express-graphql';
 import { Schema } from './graphql/schemas';
 
 const app = express();
+const logger = ConsoleLogger("Facade");
 
 app.use("/api/graphql", graphqlHTTP({
 	schema: Schema,
@@ -16,5 +17,5 @@ app.get("/", (req, res) => {
 });
 
 app.listen(config.PORT, () => {
-	Log(`Server started at http://localhost:${config.PORT}`);
+	logger(`Server started at http://localhost:${config.PORT}`);
 });
