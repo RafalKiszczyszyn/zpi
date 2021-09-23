@@ -1,7 +1,6 @@
 import Article, { IArticle } from '../models/article.model';
 
-// TODO: This is not tested
-export async function CreateArticle({
+async function CreateArticle({
 	title,
 	description,
 	datePublished,
@@ -12,4 +11,8 @@ export async function CreateArticle({
 		.save()
 		.then((data) => { return data })
 		.catch((err) => { throw err });
+}
+
+export default {
+	CreateArticle
 }

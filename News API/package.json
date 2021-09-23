@@ -4,7 +4,7 @@
 	"description": "To start the development server, run command: \r `code/manage.py runserver <host>:<port>`",
 	"main": "index.js",
 	"scripts": {
-		"test": "jest",
+		"test": "jest --coverage",
 		"dev": "nodemon ./src/index.ts "
 	},
 	"contributors": [

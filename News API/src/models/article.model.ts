@@ -24,6 +24,6 @@ const ArticleSchema: Schema = new Schema({
 		url: { type: String, required: true },
 	},
 	characteristics: { type: Boolean, required: true },
-});
+}, { collection: "Articles" });
 
 export default mongoose.model<IArticle>('Article', ArticleSchema);
