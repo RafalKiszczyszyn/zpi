@@ -1,170 +1,195 @@
 import importlib
-import inspect
-
-from broker import endpoints, config, loggers, interceptors as inters
-from broker.loggers import log_exception
-
-
-class Task:
-
-    def __init__(self,
-                 source: endpoints.SourceEndpointBase,
-                 destination: endpoints.DestinationEndpointBase,
-                 interceptors=None):
-        self.__source = source
-        self.__destination = destination
-        self.__interceptors = interceptors
-
-    @log_exception
-    def execute(self):
-        content = self.__source.pull()
-        if self.__interceptors:
-            content = self.transform_content(content)
-        self.__destination.push(content)
-
-    def transform_content(self, content):
-        for interceptor in self.__interceptors:
-            content = interceptor.transform(content)
-        return content
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from inspect import signature, isclass
 
 
-class TaskBuilderException(Exception):
-    pass
+class AbstractInvoker(ABC):
+    """Interface like abstract class to indicate Invoker implementations."""
+
+    @abstractmethod
+    def invoke(self, __method__: callable, *args, **kwargs):
+        pass
 
 
-class TaskBuilder:
+class Invoker(AbstractInvoker):
 
-    def __init__(self, tasks):
-        self.__tasks = tasks
+    @classmethod
+    def invoke(cls, __method__: callable, *args, **kwargs):
+        if not callable(__method__):
+            raise Exception(f'{__method__} is not callable.')
 
-    def build(self):
-        tasks = []
-        for _task in self.__tasks:
-            try:
-                name = None
-                if 'name' in _task:
-                    name = _task['name']
+        if not Invoker._has_args_and_kwargs(__method__):
+            raise Exception(f'Method {__method__} must take *args and **kwargs parameters.')
 
-                source_endpoint = self.__build_source_endpoint(_task['source'], task_name=name)
-                destination_endpoint = self.__build_destination_endpoint(_task['destination'], task_name=name)
-
-                interceptors = None
-                if 'interceptors' in _task:
-                    interceptors = self.__build_interceptors(_task['interceptors'])
-
-                tasks.append(Task(source_endpoint, destination_endpoint, interceptors))
-            except KeyError as e:
-                raise TaskBuilderException(f"{e} not found in config file.")
-
-        return tasks
-
-    def __build_source_endpoint(self, _source, **kwargs):
-        endpoint, source_class_name = self.__build_endpoint(_source, **kwargs)
-        if not issubclass(type(endpoint), endpoints.SourceEndpointBase):
-            raise TaskBuilderException(f"{source_class_name} class is not subclass of endpoints.SourceEndpointBase")
-
-        return endpoint
-
-    def __build_destination_endpoint(self, _source, **kwargs):
-        endpoint, source_class_name = self.__build_endpoint(_source, **kwargs)
-        if not issubclass(type(endpoint), endpoints.DestinationEndpointBase):
-            raise TaskBuilderException(
-                f"{source_class_name} class is not subclass of endpoints.DestinationEndpointBase")
-
-        return endpoint
+        return __method__(*args, **kwargs)
 
     @staticmethod
-    def __build_interceptors(_interceptors):
-        interceptors = []
-        for _interceptor in _interceptors:
-            interceptor = ClassLoader.load(_interceptor)
+    def _has_args_and_kwargs(method):
+        # TODO: Consider better way of checking if method has args and kwargs
+        params = signature(method).parameters
+        count = 0
+        for param_name in params:
+            if str(params[param_name]).startswith('*') or str(params[param_name]).startswith('**'):
+                count += 1
 
-            if not issubclass(type(interceptor), inters.InterceptorBase):
-                raise TaskBuilderException(f"{_interceptor} class is not subclass of interceptors.InterceptorBase")
+        return count == 2
 
-            interceptors.append(interceptor)
 
-        return interceptors
+@dataclass
+class InjectService:
+    service_name: str
+    attribute_name: str
+
+
+@dataclass
+class ConfigArgs:
+    required: [str]
+    optional: [str] = field(default_factory=list)
+    validate: bool = False
+
+
+class AbstractMetaResolver(ABC):
+    """Interface like abstract class to indicate Meta Resolver implementations."""
+
+    @abstractmethod
+    def resolve(self, instance, args=None):
+        pass
+
+
+class MetaResolver(AbstractMetaResolver):
+
+    def __init__(self, services):
+        self.services = services
+
+    def resolve(self, instance, args=None):
+        if not args:
+            args = {}
+
+        mro = type.mro(type(instance))
+        for class_ in filter(lambda c: hasattr(c, 'Meta') and isclass(c.Meta), mro):
+            self._apply_meta(instance, class_.Meta, args)
+
+    def _apply_meta(self, instance, meta, args):
+        if hasattr(meta, 'services'):
+            self._inject_services(instance, meta.services)
+
+        if hasattr(meta, 'args'):
+            MetaResolver._parse_args(instance, meta.args, args)
+        pass
+
+    def _inject_services(self, instance: object, meta_services: [InjectService]):
+        if [meta_services for meta_service in meta_services if not isinstance(meta_service, InjectService)]:
+            raise Exception(f"{instance}.Meta.services must be a list of InjectService.")
+
+        for meta_service in meta_services:
+            if meta_service.service_name not in self.services:
+                print(f'WARNING: Service={meta_service.service_name} not found in config file. '
+                      'Thus will not be injected.')
+            setattr(instance, meta_service.attribute_name, self.services[meta_service.service_name])
+        pass
 
     @staticmethod
-    def __build_endpoint(_endpoint, **kwargs):
-        source_class_name = _endpoint['class']
-        args = _endpoint['args']
+    def _parse_args(instance: object, meta_args: ConfigArgs, args: dict):
+        if not isinstance(meta_args, ConfigArgs):
+            raise Exception(f'{instance}.Meta.args must type of ConfigArgs.')
 
-        for key in args:
-            kwargs[key] = args[key]
+        for req_attr in meta_args.required:
+            if req_attr not in args:
+                raise Exception(f'Required attribute \'{req_attr}\' was not given for {instance}.')
+            setattr(instance, req_attr, args[req_attr])
 
-        endpoint = ClassLoader.load(source_class_name, _endpoint, **kwargs)
+        for opt_attr in meta_args.optional:
+            if opt_attr in args:
+                setattr(instance, opt_attr, args[opt_attr])
 
-        if endpoint is None:
-            raise TaskBuilderException(f"Could not load {source_class_name} class.")
-
-        if not issubclass(type(endpoint), endpoints.EndpointBase):
-            raise TaskBuilderException(f"{source_class_name} class is not subclass of endpoints.EndpointBase")
-
-        return endpoint, source_class_name
-
-
-class ClassLoaderException(Exception):
-    pass
+        if meta_args.validate:
+            if not hasattr(instance, 'validate_config_args'):
+                raise Exception(f'{instance} does not have validate_config_args method required to validate args.')
+            instance.validate_config_args()
+        pass
 
 
-class ClassLoader:
+class AbstractClassLoader(ABC):
+    """Interface like abstract class to indicate ClassLoader implementations."""
 
-    @staticmethod
-    def load(full_class_name, *args, **kwargs):
+    @abstractmethod
+    def load(self, full_class_name: str, *args, **kwargs):
+        pass
+
+
+class ClassLoader(AbstractClassLoader):
+
+    def __init__(self, invoker: AbstractInvoker):
+        if not issubclass(type(invoker), AbstractInvoker):
+            raise TypeError('Parameter invoker must be an implementation of AbstractInvoker.')
+        self.invoker = invoker
+
+    def load(self, full_class_name: str, *args, **kwargs):
+        if type(full_class_name) != str:
+            raise TypeError(f'Parameter full_class_name must be a str.')
+
         if '.' not in full_class_name:
-            raise ClassLoaderException(f"{full_class_name} must be a full class name.")
+            raise Exception(f"{full_class_name} must be a full class name.")
 
-        module_name, class_name = ClassLoader.__get_module_name_and_class_name(full_class_name)
+        module_name, class_name = full_class_name.rsplit('.', maxsplit=1)
         try:
             module = importlib.import_module(module_name)
         except ModuleNotFoundError:
-            raise ClassLoaderException(f"Module specified in {full_class_name} does not exist.")
+            raise Exception(f"Module specified in {full_class_name} does not exist.")
 
-        if hasattr(module, class_name):
-            _class = getattr(module, class_name)
-            return ClassLoader.init_class(_class, *args, **kwargs)
-        else:
-            return None
+        if not hasattr(module, class_name):
+            raise Exception(f"Class {class_name} does not exits in {module}.")
 
-    @staticmethod
-    def __get_module_name_and_class_name(full_class_name: str):
-        return full_class_name.rsplit('.', maxsplit=1)
+        class_ = getattr(module, class_name)
 
-    @staticmethod
-    def init_class(_class, *args, **kwargs):
         try:
-            return _class(*args, **kwargs) \
-                if inspect.isclass(_class) \
-                else None
+            instance = self.invoker.invoke(class_, *args, **kwargs)
         except Exception as e:
-            raise ClassLoaderException(f"Failed to load {type(_class)} with message: {e}.")
+            raise Exception(f"Failed to load {class_} with message: {e}.")
+
+        if not isclass(type(instance)):
+            raise Exception(f'{class_} is not a class.')
+        return instance
 
 
-def execute(tasks):
-    for task in tasks:
-        task.execute()
+class AbstractImplementationBuilder(ABC):
+    """Interface like abstract class to indicate ImplementationBuilder implementations."""
+
+    @abstractmethod
+    def build(self, config, *args, **kwargs):
+        pass
 
 
-def get_tasks_from_config():
-    try:
-        return TaskBuilder(config.TASKS).build()
-    except Exception as e:
-        print(e)
-        exit(-1)
+class ImplementationBuilder(AbstractImplementationBuilder):
+
+    def __init__(self, class_loader: AbstractClassLoader, meta_resolver: AbstractMetaResolver):
+        if not issubclass(type(class_loader), AbstractClassLoader):
+            raise TypeError('Parameter class_loader must be an implementation of AbstractClassLoader.')
+        if not issubclass(type(meta_resolver), AbstractMetaResolver):
+            raise TypeError('Parameter meta_resolver must be an implementation of AbstractMetaResolver.')
+        self.class_loader = class_loader
+        self.meta_resolver = meta_resolver
+
+    def build(self, config, *args, **kwargs):
+        if 'class' not in config:
+            raise Exception('No implementation class name specified.')
+
+        full_class_name = config['class']
+        config_args = {}
+        if 'args' in config:
+            config_args = config['args']
+
+        try:
+            implementation = self.class_loader.load(full_class_name, *args, **kwargs)
+            self.meta_resolver.resolve(implementation, config_args)
+            return implementation
+        except Exception as e:
+            raise Exception(f'Loading implementation failed with message: {e}')
 
 
-def startup():
-    if hasattr(config, 'LOGGER'):
-        logger = ClassLoader.load(config.LOGGER)
-        if issubclass(type(logger), loggers.LoggerBase):
-            loggers.logger = logger
-
-    tasks = []
-    if hasattr(config, 'TASKS'):
-        tasks = get_tasks_from_config()
-    else:
-        print("No tasks in config file.")
-
-    execute(tasks)
+def implementation_builder_factory(services):
+    invoker = Invoker()
+    meta_resolver = MetaResolver(services)
+    class_loader = ClassLoader(invoker)
+    return ImplementationBuilder(class_loader, meta_resolver)
