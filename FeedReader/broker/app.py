@@ -2,19 +2,19 @@ from broker import core, config, builders
 from broker.server import HttpServer
 
 
-def load_services():
+def load_services(config_services):
     implementation_builder = core.implementation_builder_factory({})
     service_builder = builders.ServiceBuilder(implementation_builder)
 
-    return service_builder.build(config.SERVICES)
+    return service_builder.build(config_services)
 
 
-def load_tasks(services):
+def load_tasks(config_tasks, services):
     meta_resolver = core.MetaResolver(services)
     implementation_builder = core.implementation_builder_factory(services)
     task_builder = builders.TaskBuilder(implementation_builder, meta_resolver)
     tasks = []
-    for config_task in config.TASKS:
+    for config_task in config_tasks:
         task = task_builder.build(config_task)
         tasks.append(task)
 
@@ -30,8 +30,8 @@ def listen(host, port, *args, **kwargs):
 
 
 def startup():
-    services = load_services()
-    tasks = load_tasks(services)
+    services = load_services(config.SERVICES)
+    tasks = load_tasks(config.TASKS, services)
     listen(config.HOST, config.PORT, endpoint=config.EVENT_ENDPOINT, tasks=tasks)
 
 

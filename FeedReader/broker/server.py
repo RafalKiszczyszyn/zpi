@@ -13,6 +13,7 @@ class BackgroundWorker:
         print('Background worker started...')
         while True:
             tasks = self._queue.get(block=True)
+            sleep(0.5)
             print('Started processing tasks in the background...')
             for task in tasks:
                 task.execute()

@@ -35,7 +35,7 @@ class TaskBuilder:
         if 'steps' not in config:
             raise Exception('No task steps specified.')
 
-        context = f'Task={config["name"]}'
+        context = f"Task='{config['name']}'"
         steps = []
         try:
             for config_step in config['steps']:
@@ -52,7 +52,7 @@ class TaskBuilder:
         if 'name' not in config:
             raise Exception('No task step name specified.')
 
-        context = f'{context}, Step={config["name"]}'
+        context = f"{context}, Step='{config['name']}'"
         try:
             implementation = self.implementation_builder.build(config, context=context)
             if not issubclass(type(implementation), TaskStepBase):

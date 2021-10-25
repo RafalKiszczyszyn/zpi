@@ -59,8 +59,9 @@ class AbstractMetaResolver(ABC):
 
 class MetaResolver(AbstractMetaResolver):
 
-    def __init__(self, services):
+    def __init__(self, services, on_injection_failure=None):
         self.services = services
+        self.on_injection_failure = on_injection_failure
 
     def resolve(self, instance, args=None):
         if not args:
@@ -80,23 +81,26 @@ class MetaResolver(AbstractMetaResolver):
 
     def _inject_services(self, instance: object, meta_services: [InjectService]):
         if [meta_services for meta_service in meta_services if not isinstance(meta_service, InjectService)]:
-            raise Exception(f"{instance}.Meta.services must be a list of InjectService.")
+            raise Exception(f"{instance.Meta}.services must be a list of InjectService.")
 
         for meta_service in meta_services:
-            if meta_service.service_name not in self.services:
-                print(f'WARNING: Service={meta_service.service_name} not found in config file. '
-                      'Thus will not be injected.')
-            setattr(instance, meta_service.attribute_name, self.services[meta_service.service_name])
+            if meta_service.service_name in self.services:
+                setattr(instance, meta_service.attribute_name, self.services[meta_service.service_name])
+            elif self.on_injection_failure:
+                self.on_injection_failure(meta_service)
+                # print(f'WARNING: Service={meta_service.service_name} not found in config file. '
+                #       'Thus will not be injected.')
+
         pass
 
     @staticmethod
     def _parse_args(instance: object, meta_args: ConfigArgs, args: dict):
         if not isinstance(meta_args, ConfigArgs):
-            raise Exception(f'{instance}.Meta.args must type of ConfigArgs.')
+            raise Exception(f'{instance.Meta}.args must be a ConfigArgs.')
 
         for req_attr in meta_args.required:
             if req_attr not in args:
-                raise Exception(f'Required attribute \'{req_attr}\' was not given for {instance}.')
+                raise Exception(f'Required attribute \'{req_attr}\' was not given for {type(instance)}.')
             setattr(instance, req_attr, args[req_attr])
 
         for opt_attr in meta_args.optional:
@@ -104,10 +108,25 @@ class MetaResolver(AbstractMetaResolver):
                 setattr(instance, opt_attr, args[opt_attr])
 
         if meta_args.validate:
-            if not hasattr(instance, 'validate_config_args'):
-                raise Exception(f'{instance} does not have validate_config_args method required to validate args.')
+            if not (hasattr(instance, 'validate_config_args')
+                    and MetaResolver._is_validation_method(instance.validate_config_args)):
+                raise Exception(f'{type(instance)} does not have validate_config_args method '
+                                f'that takes 0 arguments, required to validate args.')
             instance.validate_config_args()
         pass
+
+    @staticmethod
+    def _is_validation_method(__method__):
+        if not callable(__method__):
+            return False
+
+        params = signature(__method__).parameters
+        if len(params) == 0:
+            return True
+
+        pos_args = [param for param in params if not str(params[param]).startswith('*')]
+
+        return len(pos_args) == 0
 
 
 class AbstractClassLoader(ABC):

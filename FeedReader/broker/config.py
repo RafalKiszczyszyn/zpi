@@ -1,5 +1,5 @@
 """
-Broker configuration file.
+FeedReader configuration file.
 """
 
 # HTTP Server configuration
@@ -26,18 +26,26 @@ SERVICES = {
 """List of tasks."""
 TASKS = [
     {
-        'name': 'Test Task',
+        'name': 'Polsat',
         'steps': [
             {
-                'name': 'Get data from polsat RSS',
-                'class': 'broker.tasks.HttpGetTaskStep',
-                'args': {'url': 'http://example.com'}
+                'name': 'Parse',
+                'class': 'broker.tasks.RssParser',
+                'args': {
+                    'url': 'https://www.polsatnews.pl/rss/polska.xml',
+                }
             },
             {
-                'name': 'Post event in the queue',
-                'class': 'broker.tasks.HttpPostTaskStep',
-                'args': {'url': 'http://example.com'}
-            }
+                'name': 'Format',
+                'class': 'broker.tasks.RssMapper',
+            },
+            {
+                'name': 'Publish',
+                'class': 'broker.tasks.QueueEventPublisher',
+                'args': {
+                    'channel': 'CHANNEL',
+                }
+            },
         ]
     }
 ]
