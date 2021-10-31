@@ -1,7 +1,7 @@
 {
 	"name": "news-api",
 	"version": "1.0.0",
-	"description": "To start the development server, run command: \r `code/manage.py runserver <host>:<port>`",
+	"description": "Service for accessing and saving news articles in unified format.",
 	"main": "index.js",
 	"scripts": {
 		"test": "jest --coverage",
@@ -21,10 +21,12 @@
 	"dependencies": {
 		"@types/express": "^4.17.13",
 		"@types/node": "^16.9.1",
+		"amqplib": "^0.8.0",
 		"express": "^4.17.1",
 		"mongoose": "^6.0.7"
 	},
 	"devDependencies": {
+		"@types/amqplib": "^0.8.2",
 		"@types/jest": "^27.0.2",
 		"jest": "^27.2.1",
 		"mongodb-memory-server": "^7.4.1",

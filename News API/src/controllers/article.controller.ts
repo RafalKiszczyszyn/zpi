@@ -1,18 +1,28 @@
 import Article, { IArticle } from '../models/article.model';
 
-async function CreateArticle({
+interface IArticleQueryParams {
+	before?: string;
+	after?: string;
+	query?: string;
+}
+
+export async function CreateArticle({
 	title,
 	description,
 	datePublished,
 	source,
 	characteristics
 }: IArticle): Promise<IArticle> {
-	return new Article({ title, description, datePublished, source, characteristics })
-		.save()
-		.then((data) => { return data })
-		.catch((err) => { throw err });
+	const article = new Article({ title, description, datePublished, source, characteristics });
+	const data = await article.save();
+	return data;
 }
 
-export default {
-	CreateArticle
+export async function QueryArticles({
+	before,
+	after,
+	query
+}: IArticleQueryParams): Promise<IArticle[]> {
+	const articles: IArticle[] = await Article.find({});
+	return articles;
 }

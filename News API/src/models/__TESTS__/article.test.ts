@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { initializeConnection } from '../../utils/database';
+import { initializeConnection } from '../../functions/utils/database';
 import Article, { IArticle } from '../article.model';
 import config from '../../config';
 
