@@ -1,0 +1,89 @@
+{
+	"swagger": "2.0",
+	"info": {
+		"title": "Sample API",
+		"description": "API description in Markdown",
+		"version": "1.0.0"
+	},
+	"host": "localhost:4010",
+	"basePath": "/",
+	"schemes": [
+		"http"
+	],
+	"consumes": [
+		"application/json"
+	],
+	"produces": [
+		"application/json"
+	],
+	"paths": {
+		"/articles": {
+			"get": {
+				"description": "Get articles from database",
+				"operationId": "queryArticles",
+				"parameters": [
+					{
+						"name": "_before",
+						"in": "query",
+						"description": "Query only articles posted before provided date",
+						"required": false,
+						"type": "string",
+						"format": "date-time"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Articles array",
+						"schema": {
+							"type": "array",
+							"items": {
+								"$ref": "#/definitions/Article"
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+	"definitions": {
+		"Article": {
+			"type": "object",
+			"properties": {
+				"source": {
+					"$ref": "#/definitions/Source"
+				},
+				"_id": {
+					"type": "string"
+				},
+				"title": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				},
+				"characteristics": {
+					"type": "boolean"
+				},
+				"datePublished": {
+					"type": "string",
+					"format": "date-time"
+				}
+			}
+		},
+		"Source": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"url": {
+					"type": "string",
+					"format": "uri"
+				}
+			}
+		}
+	}
+}

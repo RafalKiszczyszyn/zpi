@@ -2,7 +2,14 @@ import { Router } from 'express';
 import { QueryArticles } from '../controllers/article.controller';
 import { ConsoleLogger } from '../functions/logger';
 import { parse_query_string } from '../functions/utils'
+import swagger_config from '../config/swagger.json';
+
 const router = Router();
+
+import { serve, setup } from 'swagger-ui-express';
+
+router.use('/api-docs', serve);
+router.get('/api-docs', setup(swagger_config));
 
 router.get('/articles', async (req, res) => {
 	ConsoleLogger("GET articles");

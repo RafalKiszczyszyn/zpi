@@ -37,7 +37,7 @@ const consumer = (conn: Connection) => {
 }
 
 // TODO: Configurable queue name
-export default () => {
+export default async () => {
 	connect("amqp://localhost", (err: Error, conn: Connection) => {
 		if (err != null) bail(err);
 		consumer(conn);

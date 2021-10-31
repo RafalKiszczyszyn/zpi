@@ -7,9 +7,10 @@ import event_consumer from './services/event-worker';
 
 const app = express();
 ConsoleLogger("Service prepering to start...");
-event_consumer();
 initialize_connection()
 	.then(() => app.use(router))
 	.then(() => app.listen(config.PORT))
 	.then(() => ConsoleLogger(`Service started at http://localhost:${config.PORT}`))
+	.then(() => event_consumer())
+	.then(() => ConsoleLogger('Service successfully connected to RabbitMQ server'))
 	.catch((err) => ConsoleLogger("Could not start service"));
