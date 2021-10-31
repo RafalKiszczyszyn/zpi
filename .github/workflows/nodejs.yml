@@ -2,9 +2,13 @@ name: Test NodeJS enviroments
 
 on:
   push:
-    branches: [ master ]
+    branches: 
+      - master
+      - module/articles-api
   pull_request:
-    branches: [ master ]
+    branches:
+      - master
+      - module/articles-api
 
 jobs:
   build:
