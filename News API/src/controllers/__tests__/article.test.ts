@@ -1,13 +1,13 @@
 import mongoose from 'mongoose';
-import { initializeConnection } from '../../functions/utils/database';
-import ArticleController from '../article.controller';
+import { initialize_connection } from '../../functions/database';
+import { CreateArticle } from '../article.controller';
 import Article from '../../models/article.model'
 import config from '../../config';
 
 
 describe("Article controller", () => {
 	beforeAll(async () => {
-		initializeConnection();
+		initialize_connection();
 	});
 
 	afterAll(async () => {
@@ -27,7 +27,7 @@ describe("Article controller", () => {
 			}
 		});
 
-		const result = await ArticleController.CreateArticle(testArticle);
+		const result = await CreateArticle(testArticle);
 
 		expect(result.source.id).toBe("test_id");
 	});

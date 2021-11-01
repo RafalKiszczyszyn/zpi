@@ -1,12 +1,12 @@
 import mongoose from 'mongoose';
-import { initializeConnection } from '../../functions/utils/database';
+import { initialize_connection } from '../../functions/database';
 import Article, { IArticle } from '../article.model';
 import config from '../../config';
 
 
 describe("Article model", () => {
 	beforeAll(async () => {
-		initializeConnection();
+		initialize_connection();
 	});
 
 	afterAll(async () => {

@@ -36,3 +36,5 @@ export async function QueryArticles({
 	});
 	return articles;
 }
+
+export default { CreateArticle, QueryArticles };
