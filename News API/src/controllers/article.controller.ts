@@ -23,6 +23,16 @@ export async function QueryArticles({
 	after,
 	query
 }: IArticleQueryParams): Promise<IArticle[]> {
-	const articles: IArticle[] = await Article.find({});
+	const gtDate = after ? new Date(after) : new Date(0);
+	const ltDate = before ? new Date(before) : new Date();
+	const qRegex = query ? query : "";
+
+	const articles: IArticle[] = await Article.find({
+		datePublished: {
+			$gt: gtDate,
+			$lt: ltDate,
+		},
+		$or: [{ description: { $regex: qRegex } }, { title: { $regex: qRegex } }]
+	});
 	return articles;
 }
