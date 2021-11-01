@@ -1,7 +1,8 @@
 import asyncio
-import functools
 import threading
 import time
+from abc import ABC, abstractmethod
+
 import pika
 from pika.adapters.asyncio_connection import AsyncioConnection
 
@@ -17,17 +18,45 @@ def synchronise(lock, func, *args, **kwargs):
     return obj
 
 
-class AsyncRabbitPublisher:
+class AbstractAsyncPublisher(ABC):
+
+    @abstractmethod
+    def set_on_connected_callback(self, on_connected_callback):
+        pass
+
+    @abstractmethod
+    def set_on_error_callback(self, on_error_callback):
+        pass
+
+    @abstractmethod
+    def set_on_message_returned_callback(self, on_message_returned_callback):
+        pass
+
+    @abstractmethod
+    def set_on_delivery_confirmation_callback(self, on_delivery_confirmation_callback):
+        pass
+
+    @abstractmethod
+    def connect(self):
+        pass
+
+    @abstractmethod
+    def publish(self, message):
+        pass
+
+    @abstractmethod
+    def close(self):
+        pass
+
+
+class AsyncRabbitPublisher(AbstractAsyncPublisher):
 
     NEW = 0
     CONNECTED = 1
     CLOSED = 2
 
-    def __init__(self, url, exchange, on_connected_callback=None, on_error_callback=None):
-        self._on_connected_callback = on_connected_callback
-        self._on_error_callback = on_error_callback
-
-        self.lock = threading.Lock()
+    def __init__(self, url, exchange):
+        self._lock = threading.Lock()
         self._loop = asyncio.get_event_loop()
 
         self._url = url
@@ -38,6 +67,8 @@ class AsyncRabbitPublisher:
 
         self._state = self.NEW
 
+        self._on_connected_callback = None
+        self._on_error_callback = None
         self._on_message_returned_callback = None
         self._delivery_confirmation_callback = None
 
@@ -53,7 +84,7 @@ class AsyncRabbitPublisher:
     def set_on_delivery_confirmation_callback(self, on_delivery_confirmation_callback):
         self._delivery_confirmation_callback = on_delivery_confirmation_callback
 
-    def connect(self):
+    async def connect(self):
         AsyncioConnection(
             parameters=pika.URLParameters(self._url),
             on_open_callback=self._on_connection_open,
@@ -61,15 +92,13 @@ class AsyncRabbitPublisher:
             on_close_callback=self._on_connection_close,
             custom_ioloop=self._loop)
 
-        self._loop.run_forever()
-
     def publish(self, message):
         """Publishes message in a thread safe manner."""
-        synchronise(self.lock, self._publish_sync, message)
+        synchronise(self._lock, self._publish_sync, message)
 
     def close(self):
         """Closes the connection in a thread safe manner."""
-        synchronise(self.lock, self._close_sync)
+        synchronise(self._lock, self._close_sync)
 
     # PROTECTED METHODS
 
@@ -93,6 +122,9 @@ class AsyncRabbitPublisher:
     def _on_exchange_declared(self, frame):
         # Now we are sure that connection is open and everything works fine.
         self._state = self.CONNECTED
+        print('CONNECTED')
+        while True:
+            pass
 
     # SYNCHRONISED METHODS
 
@@ -115,7 +147,7 @@ class AsyncRabbitPublisher:
             body=message,
             mandatory=True)
 
-    def _on_message_returned(self, channel, frame, properties, body):
+    def _on_message_returned(self, _, frame, __, body):
         if self._on_message_returned_callback:
             self._on_message_returned_callback(frame.reply_text, body)
 
@@ -131,7 +163,7 @@ class AsyncRabbitPublisher:
 
     def _shutdown(self):
         self._state = self.CLOSED
-        self._loop.stop()
+        # self._loop.stop()
 
     # ERROR HANDLERS
 
@@ -141,7 +173,6 @@ class AsyncRabbitPublisher:
         self._shutdown()
 
     def _on_connection_close(self, _, reason):
-        self._loop.stop()
         if reason.reply_code != 200 and self._on_error_callback:
             self._on_error_callback(
                 Exception(f'Unexpected connection shutdown, reason="{reason.reply_text}".'))
@@ -154,51 +185,70 @@ class AsyncRabbitPublisher:
             self._close()
 
 
-class RabbitMqPublisher:
+class EventQueueException(Exception):
+    pass
+
+
+class MessageReturnedException(Exception):
+    pass
+
+
+class AbstractEventQueuePublisher(ABC):
+    @abstractmethod
+    def connect(self):
+        pass
+
+    @abstractmethod
+    def publish(self, message):
+        pass
+
+    @abstractmethod
+    def close(self):
+        pass
+
+
+class RabbitMQPublisher(AbstractEventQueuePublisher):
 
     def __init__(self, url, exchange):
         self._url = url
         self._exchange = exchange
-
-        self._conn = None
-        self._channel = None
+        self._channel: pika.adapters.blocking_connection.BlockingChannel = None
+        self._conn: pika.adapters.BlockingConnection = None
 
     def connect(self):
-        self._conn = pika.BlockingConnection(
-            pika.URLParameters(self._url))
-
-        self._channel = self._conn.channel()
-        self._channel.exchange_declare(self._exchange, exchange_type='fanout')
-        self._channel.confirm_delivery()
-
-    def close(self):
-        if self._conn and self._conn.is_open:
-            self._conn.close()
+        try:
+            self._connect()
+        except Exception as e:
+            raise EventQueueException("Connection to event queue failed") from e
 
     def publish(self, message):
+        try:
+            self._publish(message)
+        except pika.exceptions.UnroutableError as e:
+            raise MessageReturnedException("Event queue returned a message") from e
+        except Exception as e:
+            raise EventQueueException("Failed to publish a message") from e
+
+    def _connect(self):
+        self._conn = pika.BlockingConnection(pika.URLParameters(url=self._url))
+        channel = self._conn.channel()
+        channel.exchange_declare(exchange=self._exchange, exchange_type='fanout')
+        channel.confirm_delivery()
+        self._channel = channel
+
+    def _publish(self, message):
         self._channel.basic_publish(
-            exchange=self._exchange,
+            exchange='feed',
             routing_key='',
             body=message,
             mandatory=True)
 
-    def __enter__(self):
-        self.connect()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
+    def close(self):
+        if self._conn:
+            self._conn.close()
 
 
 if __name__ == '__main__':
-    # with RabbitMqPublisher('amqp://admin:admin@localhost:5672/articles', exchange='feed') as publisher:
-    #     while True:
-    #         publisher.publish('Hello world!')
-    pub = AsyncRabbitPublisher('amqp://admin:admin@localhost:5672/articles', exchange='feed',
-                               on_connected_callback=None, on_error_callback=lambda e: print(type(e)))
-    pub.set_on_delivery_confirmation_callback(lambda tag, x: print(tag, x))
-    pub.set_on_message_returned_callback(lambda reason, body: print(reason, body))
-    threading.Thread(target=pub.connect).start()
-    time.sleep(2)
-    pub.publish('Hello world!')
-    pub.close()
+    # asyncio.get_event_loop().run_until_complete(main())
+    pub = Publisher('amqp://guest:guest@localhost:5672/%2f?heartbeat=5')
+

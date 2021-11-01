@@ -1,8 +1,14 @@
 *
 
-!broker
+!appdata
+!appdata/*
+
+!feedreader
 !tests
+!debug
 !**/*.py
+
+!Dockerfile
 !.gitignore
 !README.MD
 !requirements.txt
