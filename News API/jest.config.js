@@ -6,5 +6,6 @@ module.exports = {
 		'ts-jest': {
 			tsconfig: 'tsconfig.json'
 		}
-	}
+	},
+	testTimeout: 10000,
 };

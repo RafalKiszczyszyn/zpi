@@ -1,8 +1,14 @@
-### Django driven REST API providing access to news
+# Articles API 
+## Instalation
+### Build service image
+```
+docker build -t articles .
+```
+### Run container
+Before running the container be sure to run RabbitMQ and publisher services (FeedReader and NLPService). This part is critical since the service will not work if the message exchanges are not available.
 
-To start the development server, run command: 
-`code/manage.py runserver <host>:<port>`
-
-###### Development recommendations:
-* Virtual environment named **.venv** and located in **News API** folder 
-* Version of python: 3.9.1
+- -d is a detached container, meaning it will not block the shell
+- --network host makes sure that the container has all necessary network connectivity with other containers
+```
+docker run -d --hostname articles --name Articles --network host articles:latest
+```

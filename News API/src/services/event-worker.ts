@@ -1,45 +1,27 @@
-import { Connection, Channel, connect, Replies, Message } from 'amqplib/callback_api';
+import { Connection, Channel, connect, Replies, Message } from 'amqplib';
+import { IMessage } from '../models/article.model';
 import { ConsoleLogger } from '../functions/logger';
+import config from '../config'
 
-type Error = any;
+export default async () => {
+	const connection: Connection = await connect(config.RABBIT_URL);
+	const channel: Channel = await connection.createChannel();
+	const queue: Replies.AssertQueue = await channel.assertQueue('', { exclusive: true });
 
-const bail = (err: Error) => {
-	ConsoleLogger(err);
-	process.exit(1);
+	await channel.bindQueue(queue.queue, config.RABBIT_EXCHANGE_NAME, '');
+	await channel.consume(queue.queue, on_consume(channel));
 }
 
-const on_consume = (channel: Channel) =>
-{
-	let counter = 0;
-	return (msg: Message | null) => {
-		if (msg !== null) {
-			ConsoleLogger("Event recieved: " + counter);
-			counter++;
-			channel.ack(msg);
-		}
+const on_consume = (channel: Channel) => (msg: Message | null) => {
+	if (msg !== null) {
+		let message: IMessage = parse_message(msg);
+		ConsoleLogger("Event recieved");
+		ConsoleLogger(`Recived articles from ${message.title}`);
+		ConsoleLogger(`Recieved ${message.articles.length} articles`);
+		channel.ack(msg);
 	}
 }
 
-const on_assert_queue = (err: Error, queue_reply: Replies.AssertQueue, channel: Channel) => {
-	if (err !== null) bail(err);
-
-	channel.bindQueue(queue_reply.queue, "logs", '');
-	channel.consume(queue_reply.queue, on_consume(channel));
-}
-
-const on_consumer_open = (err: Error, channel: Channel) => {
-	if (err != null) bail(err);
-	channel.assertQueue('', { exclusive: true }, (assert_error, q_reply) => on_assert_queue(assert_error, q_reply, channel));
-}
-
-const consumer = (conn: Connection) => {
-	conn.createChannel(on_consumer_open);
-}
-
-// TODO: Configurable queue name
-export default async () => {
-	connect("amqp://localhost", (err: Error, conn: Connection) => {
-		if (err != null) bail(err);
-		consumer(conn);
-	});
+const parse_message = (msg: Message) => {
+	return JSON.parse(Buffer.from(msg.content).toString())
 }

@@ -29,6 +29,21 @@
 						"required": false,
 						"type": "string",
 						"format": "date-time"
+					},
+					{
+						"name": "_after",
+						"in": "query",
+						"description": "Query only articles posted after provided date",
+						"required": false,
+						"type": "string",
+						"format": "date-time"
+					},
+					{
+						"name": "_query",
+						"in": "query",
+						"description": "Query only articles containg provided string in title or description",
+						"required": false,
+						"type": "string"
 					}
 				],
 				"responses": {
@@ -43,6 +58,30 @@
 					}
 				}
 			}
+		},
+		"/article": {
+			"get": {
+				"description": "Get articles from database",
+				"operationId": "queryArticles",
+				"parameters": [
+					{
+						"name": "_uuid",
+						"in": "path",
+						"description": "UUID of the article to retrieve",
+						"required": true,
+						"type": "string",
+						"format": "uuid"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Articles array",
+						"schema": {
+							"$ref": "#/definitions/Article"
+						}
+					}
+				}
+			}
 		}
 	},
 	"definitions": {
@@ -53,7 +92,8 @@
 					"$ref": "#/definitions/Source"
 				},
 				"_id": {
-					"type": "string"
+					"type": "string",
+					"format": "uuid"
 				},
 				"title": {
 					"type": "string"
@@ -74,7 +114,8 @@
 			"type": "object",
 			"properties": {
 				"id": {
-					"type": "string"
+					"type": "string",
+					"format": "uuid"
 				},
 				"name": {
 					"type": "string"

@@ -8,12 +8,14 @@ interface IArticleQueryParams {
 
 export async function CreateArticle({
 	title,
-	description,
-	datePublished,
-	source,
-	characteristics
+	summary,
+	published,
+	updated,
+	link,
+	guid,
+	enclosures
 }: IArticle): Promise<IArticle> {
-	const article = new Article({ title, description, datePublished, source, characteristics });
+	const article = new Article({ title, summary, published, updated, link, guid, enclosures });
 	const data = await article.save();
 	return data;
 }
@@ -37,4 +39,9 @@ export async function QueryArticles({
 	return articles;
 }
 
-export default { CreateArticle, QueryArticles };
+export async function QueryArticle(uuid: string): Promise<IArticle> {
+	const article: IArticle = await Article.findById(uuid);
+	return article;
+}
+
+export default { CreateArticle, QueryArticles, QueryArticle };
