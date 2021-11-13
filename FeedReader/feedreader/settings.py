@@ -22,13 +22,13 @@ CONFIG = {
 
     # Event queue settings
     'event_queue': {
-        # 'url': 'amqp://guest:guest@localhost:5672/%2f?',
-        'url': 'amqp://guest:guest@localhost:5671/%2f',
-        'ssl': {
-            'cafile': APPDATA / 'rabbitmq' / 'ca.pem',
-            'certfile': APPDATA / 'rabbitmq' / 'feedreader.crt',
-            'keyfile': APPDATA / 'rabbitmq' / 'feedreader.key'
-        }
+        'url': 'amqp://guest:guest@localhost:5672/%2f?',
+        # 'url': 'amqp://guest:guest@localhost:5671/%2f',
+        # 'ssl': {
+        #     'cafile': APPDATA / 'rabbitmq' / 'ca.pem',
+        #     'certfile': APPDATA / 'rabbitmq' / 'feedreader.crt',
+        #     'keyfile': APPDATA / 'rabbitmq' / 'feedreader.key'
+        # }
     }
 }
 
