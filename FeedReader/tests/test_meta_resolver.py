@@ -1,4 +1,4 @@
-from broker.core import MetaResolver, InjectService, ConfigArgs
+from feedreader.core import MetaResolver, InjectService, ConfigArgs
 from tests.utils import TestCase, CallVerifier
 
 

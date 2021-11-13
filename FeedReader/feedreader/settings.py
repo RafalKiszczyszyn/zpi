@@ -1,59 +1,59 @@
+import pathlib
+from feedreader.core.config import Task, Class, Step
+
+
+BASE = pathlib.Path(__file__).resolve().parent
+APPDATA = BASE / 'appdata'
+
 """
 Application settings.
 """
 CONFIG = {
     # Fetch feed every x seconds.
-    'heartbeat': 3600,
+    'heartbeat': 0,
 
-    # Logger settings
-    'logger': {
-        'filename': '../logs.txt'
-    },
-
-    # Email notifications settings
-    'email_notifications': {
-        'host': 'smtp-mail.outlook.com',
-        'port': 587,
-        'credentials': {'username': 'example@outlook.com', 'password': 'password'},
-        'template': '../appdata/email-template.html',
-        'recipients': [
-            '246655@student.pwr.edu.pl',
-            'kiszczyszyn@gmail.com'
-        ]
+    # MongoDB database settings
+    'database': {
+        'connection_string': 'mongodb://localhost:27017',
+        'database': 'test',
+        'collection': 'test',
+        'ttl': 60
     },
 
     # Event queue settings
     'event_queue': {
-        'url': 'amqp://guest:guest@localhost:5672/%2f?heartbeat=60',
-        'channel': 'feed'
+        # 'url': 'amqp://guest:guest@localhost:5672/%2f?',
+        'url': 'amqp://guest:guest@localhost:5671/%2f',
+        'ssl': {
+            'cafile': APPDATA / 'rabbitmq' / 'ca.pem',
+            'certfile': APPDATA / 'rabbitmq' / 'feedreader.crt',
+            'keyfile': APPDATA / 'rabbitmq' / 'feedreader.key'
+        }
     }
 }
+
+EXECUTOR = Class(
+    implementation='feedreader.app.tasks.FeedReader',
+    args={'channel': 'feed'}
+)
 
 """
 List of tasks.
 """
 TASKS = [
-    {
-        'name': 'Polsat',
-        'steps': [
-            {
-                'name': 'Parse',
-                'class': 'feedreader.tasks.RssParser',
-                'args': {
-                    'url': 'https://www.polsatnews.pl/rss/polska.xml',
-                }
-            },
-            {
-                'name': 'Format',
-                'class': 'feedreader.tasks.RssMapper',
-            },
-            {
-                'name': 'Publish',
-                'class': 'feedreader.tasks.QueueEventPublisher',
-                'args': {
-                    'channel': 'CHANNEL',
-                }
-            },
+    Task(
+        name='Polsat',
+        steps=[
+            Step(
+                name='Parse',
+                implementation='feedreader.app.tasks.RssParser',
+                args={'url': 'https://www.polsatnews.pl/rss/polska.xml'}
+            ),
+            Step(
+                name='Format',
+                implementation='feedreader.app.tasks.RssConverter',
+                args={'source': 'https://www.polsatnews.pl/rss/polska.xml'}
+            )
         ]
-    }
+    )
 ]

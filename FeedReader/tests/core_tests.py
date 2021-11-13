@@ -1,5 +1,5 @@
 import unittest
-from broker.core import *
+from feedreader.core import *
 
 
 test_variable = "Sample text"
