@@ -1,0 +1,10 @@
+*
+
+!wordnet
+!debug
+!**/*.py
+
+!Dockerfile
+!.gitignore
+!README.MD
+!requirements.txt
