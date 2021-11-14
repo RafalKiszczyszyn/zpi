@@ -1,6 +1,8 @@
 *
 
 !wordnet
+!wordnet/AppData
+!wordnet/AppData/sentiments.csv.gz
 !debug
 !**/*.py
 

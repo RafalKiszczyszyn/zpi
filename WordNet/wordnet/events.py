@@ -63,7 +63,7 @@ class RabbitMqConsumer:
         method_frame, header_frame, body = self._channel.basic_get(queue)
         if method_frame:
             self._messages.add(method_frame.delivery_tag)
-            future = self._pool.submit(on_message, body)
+            future = self._pool.submit(on_message, body.decode('utf-8'))
             future.add_done_callback(self._on_done(delivery_tag=method_frame.delivery_tag))
 
     def _on_done(self, delivery_tag):

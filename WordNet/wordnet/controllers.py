@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from wordnet import events
+from wordnet import events, nlp
 
 
 class IQueueController(ABC):
@@ -13,5 +13,7 @@ class IQueueController(ABC):
 class TestQueueController(IQueueController):
 
     def consume(self, message: str) -> events.Response:
-        print(TestQueueController.__name__, 'received message', message)
+        print(f"Message={message}")
+        sentiments = nlp.get_pipeline().retrieve_sentiments(message)
+        print(f"Sentiments={sentiments}")
         return events.Ack('Done!')
