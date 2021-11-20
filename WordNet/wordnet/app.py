@@ -1,21 +1,12 @@
-import asyncio
-
-from wordnet import events, nlp
-from wordnet import bindings
+from wordnet.service import startup
+from wordnet.nlp.containers import wire as wire_nlp
+from wordnet.service.containers import wire as wire_service
 
 
 def main():
-    nlp.get_pipeline()
-    consumer = events.RabbitMqConsumer(
-        loop=asyncio.get_event_loop(),
-        bindings=bindings.bindings,
-        threads=1,
-        messages_limit=1)
-    try:
-        print('Started consuming...')
-        consumer.consume()
-    except KeyboardInterrupt:
-        consumer.stop()
+    wire_nlp()
+    wire_service()
+    startup.startup()
 
 
 if __name__ == '__main__':

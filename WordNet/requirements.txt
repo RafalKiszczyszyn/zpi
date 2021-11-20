@@ -5,6 +5,7 @@ charset-normalizer==2.0.7
 click==8.0.3
 colorama==0.4.4
 cymem==2.0.6
+dependency-injector==4.37.0
 idna==3.3
 Jinja2==3.0.3
 langcodes==3.3.0
