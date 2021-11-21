@@ -23,7 +23,7 @@ class ISentimentAnnotationsDataAccess(ABC):
         pass
 
     @abstractmethod
-    def get_annotations(self, word: models.Word) -> List[models.SentimentAnnotation]:
+    def get_annotations(self, sample: models.Sample) -> List[models.SentimentAnnotation]:
         pass
 
 
@@ -37,7 +37,7 @@ class ISentimentAnnotationsDataAccessFactory(ABC):
 class ISentimentAnnotationsRepository(ABC):
 
     @abstractmethod
-    def get_annotations(self, words: List[models.Word]) -> List[models.SentimentAnnotation]:
+    def get_annotations(self, samples: List[models.Sample], defined_only=False) -> List[models.SentimentAnnotation]:
         pass
 
 
@@ -59,18 +59,24 @@ class PlWordNetDataAccess(ISentimentAnnotationsDataAccess):
     def close(self):
         self._conn.close()
 
-    def get_annotations(self, word: models.Word) -> List[models.SentimentAnnotation]:
+    def get_annotations(self, sample: models.Sample) -> List[models.SentimentAnnotation]:
+        if isinstance(sample, models.Word):
+            where = 'WHERE lemma=:lemma AND pos=:pos'
+            params = {'lemma': sample.text, 'pos': sample.pos}
+        else:
+            where = 'WHERE lemma=:lemma'
+            params = {'lemma': sample.text}
+
         cursor = self._conn.execute(
-            '''
-            SELECT lemma, pos, annotation 
+            f'''
+            SELECT annotation 
             FROM Annotations
-            WHERE lemma=:lemma AND pos=:pos
-            ''', {'lemma': word.lemma, 'pos': word.pos})
+            {where}''', params)
 
         annotations = []
         for row in cursor:
             annotation = models.SentimentAnnotation(
-                word=models.Word(lemma=row[0], pos=row[1]), annotation=row[2])
+                sample=sample, annotation=row[0])
             annotations.append(annotation)
 
         return annotations
@@ -90,15 +96,15 @@ class SentimentAnnotationsRepository(ISentimentAnnotationsRepository):
     def __init__(self, data_access_factory: ISentimentAnnotationsDataAccessFactory):
         self._data_access_factory = data_access_factory
 
-    def get_annotations(self, words: List[models.Word]) -> List[models.SentimentAnnotation]:
+    def get_annotations(self, samples: List[models.Sample], defined_only=False) -> List[models.SentimentAnnotation]:
         with self._data_access_factory.create() as data_access:
             annotations = []
-            for word in words:
-                _annotations = data_access.get_annotations(word)
-                annotation: models.SentimentAnnotation
-                if len(_annotations) == 0:
-                    annotation = models.SentimentAnnotation(word=word, annotation=0)
-                else:
-                    annotation = _annotations[0]
-                annotations.append(annotation)
+            for sample in samples:
+                annotations_ = data_access.get_annotations(sample)
+                if len(annotations_) != 0:
+                    annotations.append(annotations_[0])
+                elif not defined_only:
+                    annotations.append(
+                        models.SentimentAnnotation(sample=sample, annotation=0)
+                    )
             return annotations

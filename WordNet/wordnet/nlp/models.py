@@ -1,13 +1,25 @@
-from dataclasses import dataclass
+from abc import ABC
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
-class Word:
-    lemma: str
+class Sample(ABC):
+    index: int
+    text: str
     pos: str
 
 
 @dataclass(frozen=True)
+class Word(Sample):
+    pass
+
+
+@dataclass(frozen=True)
+class Phrase(Sample):
+    words: int
+
+
+@dataclass(frozen=True)
 class SentimentAnnotation:
-    word: Word
+    sample: Sample
     annotation: int
