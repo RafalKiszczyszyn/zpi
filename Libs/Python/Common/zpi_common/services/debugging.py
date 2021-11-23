@@ -1,9 +1,10 @@
 import smtplib
 from typing import List, Tuple
 
-from services.loggers import StdoutLogger
-from services.notifications import ISmtpConnection, ISmtpConnectionFactory, EmailBroadcastService
-
+from zpi_common.services.loggers import StdoutLogger
+from zpi_common.services.notifications import ISmtpConnection, ISmtpConnectionFactory, EmailBroadcastService
+from zpi_common.services.events import IQueueController, Response, Ack, IQueueControllerFactory, RabbitMqConnection, \
+    RabbitMqQueue, EventQueueClient, Binding
 
 DEBUGGING_SERVER_CMD = 'python -m smtpd -n -c DebuggingServer localhost:1000'
 
@@ -34,7 +35,20 @@ class DebuggingSmtpConnectionFactory(ISmtpConnectionFactory):
         return DebuggingSmtpConnection(self._host, self._port)
 
 
-if __name__ == '__main__':
+class DebuggingController(IQueueController):
+
+    def consume(self, queue: str, message: str) -> Response:
+        print(f"Queue='{queue}', Message='{message}'")
+        return Ack()
+
+
+class DebuggingControllerFactory(IQueueControllerFactory):
+
+    def create(self) -> IQueueController:
+        return DebuggingController()
+
+
+def send_email():
     service = EmailBroadcastService(
         credentials=('', ''),
         recipients=[''],
@@ -42,3 +56,21 @@ if __name__ == '__main__':
         connection_factory=DebuggingSmtpConnectionFactory(host='localhost', port=1000),
         logger=StdoutLogger())
     service.error('Info', body='This is a message body.')
+
+
+def consume():
+    queues = ['test']
+    bindings = [Binding('test', DebuggingControllerFactory())]
+
+    connection = RabbitMqConnection(
+        fanout='test',
+        queues=[RabbitMqQueue(name=queue) for queue in queues],
+        logger=StdoutLogger()
+    )
+
+    client = EventQueueClient(connection=connection, logger=StdoutLogger())
+    client.consume(bindings)
+
+
+if __name__ == '__main__':
+    consume()
