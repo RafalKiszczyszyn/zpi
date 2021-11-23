@@ -1,1 +1,0 @@
-### Service gathering news from different sources
