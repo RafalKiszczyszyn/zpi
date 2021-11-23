@@ -1,4 +1,5 @@
 import asyncio
+import ssl
 from abc import ABC, abstractmethod
 from concurrent.futures.thread import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -118,7 +119,7 @@ class RabbitMqConnection(IEventQueueConnection):
                  queues: Union[List[RabbitMqQueue], None] = None,
                  credentials: Union[Tuple[str, str], None] = None,
                  vhost: str = '/',
-                 ssl: Union[Dict[str, str], None] = None,
+                 ssl_options: Union[ssl.SSLContext, None] = None,
                  logger: Union[ILogger, None] = None):
         credentials = credentials if credentials else ('guest', 'guest')
 
@@ -131,7 +132,7 @@ class RabbitMqConnection(IEventQueueConnection):
         self._connection = connection = pika.BlockingConnection(pika.ConnectionParameters(
                 credentials=pika.PlainCredentials(username=credentials[0], password=credentials[1]),
                 virtual_host=vhost,
-                ssl_options=ssl
+                ssl_options=pika.SSLOptions(ssl_options)
         ))
         self._channel = connection.channel()
         self._channel.confirm_delivery()
@@ -214,7 +215,7 @@ class EventQueueClient(IEventQueueClient):
 
         unavailable_queues = set([binding.queue for binding in bindings]) - set(self._connection.queues)
         if len(unavailable_queues) != 0:
-            self._logger.warning(f'Queues={list(unavailable_queues)} are unavailable')
+            raise Exception(f'Queues={list(unavailable_queues)} are unavailable')
 
         try:
             self._loop.run_until_complete(self._consume(bindings))

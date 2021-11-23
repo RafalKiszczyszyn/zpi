@@ -7,5 +7,5 @@ setup(
     description='ZPI Common Libraries',
     author='Rafał Kiszczyszyn',
     license='MIT',
-    install_requires=['pika-1.2.0']
+    install_requires=['pika==1.2.0']
 )
