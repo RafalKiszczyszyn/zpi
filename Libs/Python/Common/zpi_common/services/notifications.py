@@ -8,7 +8,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import List, Tuple, Dict, Union
 
-from services.loggers import ILogger
+from .loggers import ILogger
 
 
 class ISmtpConnection(ABC):

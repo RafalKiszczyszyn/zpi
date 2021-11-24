@@ -35,3 +35,15 @@ class StdoutLogger(ILogger):
         timestamp = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
         tag = tag.rjust(10, " ")
         print(f'{timestamp} {tag} {message}')
+
+
+class DevNullLogger(ILogger):
+
+    def info(self, info: str):
+        pass
+
+    def warning(self, warning: str):
+        pass
+
+    def error(self, message, error: Exception):
+        pass

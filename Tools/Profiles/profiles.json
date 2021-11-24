@@ -1,0 +1,56 @@
+{
+    "meta": {
+        "root": "../../",
+        "buildPath": "Event Bus/"
+    },
+    "services": [
+        {
+            "name" : "feedreader",
+            "permissions": [
+                {
+                    "vhost": "main",
+                    "publish": ["feed"],
+                    "consume": []
+                }
+            ], 
+            "credentials": "feedreader:feedreader",
+            "buildPath": "Broker/"
+        },
+        {
+            "name" : "scrapper",
+            "permissions": [
+                {
+                    "vhost": "main",
+                    "publish": ["scraps"],
+                    "consume": ["feed"]
+                }
+            ], 
+            "credentials": "scrapper:scrapper",
+            "buildPath": "Scrapper/"
+        },
+        {
+            "name" : "wordnet",
+            "permissions": [
+                {
+                    "vhost": "main",
+                    "publish": ["sentiments"],
+                    "consume": ["feed", "scraps"]
+                }
+            ], 
+            "credentials": "wordnet:wordnet",
+            "buildPath": "WordNet/"
+        },
+        {
+            "name" : "articlesapi",
+            "permissions": [
+                {
+                    "vhost": "main",
+                    "publish": [],
+                    "consume": ["feed", "scraps", "sentiments"]
+                }
+            ], 
+            "credentials": "articlesapi:articlesapi",
+            "buildPath": "News API/"
+        }
+    ]
+}
