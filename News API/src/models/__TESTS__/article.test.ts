@@ -1,16 +1,13 @@
-import mongoose from 'mongoose';
-import { initialize_connection } from '../../functions/database';
+import database_worker from '../../services/database-worker';
 import Article, { IArticle } from '../article.model';
-import config from '../../config';
-
 
 describe("Article model", () => {
 	beforeAll(async () => {
-		await initialize_connection();
+		await database_worker.connect();
 	});
 
 	afterAll(async () => {
-		await mongoose.connection.close();
+		await database_worker.close();
 	});
 
 	it("Should throw validation errors", () => {

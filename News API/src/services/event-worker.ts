@@ -3,13 +3,16 @@ import { IMessage } from '../models/article.model';
 import { ConsoleLogger } from '../functions/logger';
 import config from '../config'
 
-export default async () => {
+const connect_worker = async () => {
 	const connection: Connection = await connect(config.RABBIT_URL);
+	connection.on('error', (err) => console.log(err))
+	
 	const channel: Channel = await connection.createChannel();
 	const queue: Replies.AssertQueue = await channel.assertQueue('', { exclusive: true });
-
-	await channel.bindQueue(queue.queue, config.RABBIT_EXCHANGE_NAME, '');
+	
+	await channel.bindQueue(queue.queue, config.RABBIT_EXCHANGE_NAME, '')
 	await channel.consume(queue.queue, on_consume(channel));
+
 }
 
 const on_consume = (channel: Channel) => (msg: Message | null) => {
@@ -24,4 +27,8 @@ const on_consume = (channel: Channel) => (msg: Message | null) => {
 
 const parse_message = (msg: Message) => {
 	return JSON.parse(Buffer.from(msg.content).toString())
+}
+
+export default {
+	connect: connect_worker
 }

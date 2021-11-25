@@ -16,7 +16,6 @@ export interface IArticle extends Document {
 	enclosures: Array<IEnclosure>,
 	sentiment?: boolean,
 }
-
 export interface IMessage {
 	title: string,
 	updated: Date,
