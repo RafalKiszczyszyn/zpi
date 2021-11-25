@@ -6,21 +6,31 @@ interface IArticleQueryParams {
 	query?: string;
 }
 
-export async function CreateArticle({
-	title,
-	summary,
-	published,
-	updated,
-	link,
-	guid,
-	enclosures
-}: IArticle): Promise<IArticle> {
-	const article = new Article({ title, summary, published, updated, link, guid, enclosures });
-	const data = await article.save();
+async function CreateArticle(article: IArticle): Promise<IArticle> {
+	const newArticle = new Article({...article});
+	const data = await newArticle.save();
 	return data;
 }
 
-export async function QueryArticles({
+async function UpdateArticle(article: IArticle): Promise<IArticle> {
+	const data = await Article.findOneAndUpdate({ guid: article.guid }, { ...article });
+	return data;
+}
+
+async function UpdateArticleContent({
+	content,
+	guid,
+}: { content: string, guid: string }): Promise<IArticle> {
+	const data = await Article.findOneAndUpdate({ guid }, { content });
+	return data;
+}
+
+async function UpdateArticleSentiments(article: Pick<IArticle, 'guid' | 'sentiment_title' | 'sentiment_content' | 'sentiment_summary' >): Promise<IArticle> {
+	const data = await Article.findOneAndUpdate({guid: article.guid}, {...article})
+	return data;
+}
+
+async function QueryArticles({
 	before,
 	after,
 	query
@@ -34,14 +44,21 @@ export async function QueryArticles({
 			$gt: gtDate,
 			$lt: ltDate,
 		},
-		$or: [{ description: { $regex: qRegex } }, { title: { $regex: qRegex } }]
+		$or: [{ description: { $regex: qRegex } }, { title: { $regex: qRegex } }, { content: { $regex: qRegex } }]
 	});
 	return articles;
 }
 
-export async function QueryArticle(uuid: string): Promise<IArticle> {
+async function QueryArticle(uuid: string): Promise<IArticle> {
 	const article: IArticle = await Article.findById(uuid);
 	return article;
 }
 
-export default { CreateArticle, QueryArticles, QueryArticle };
+export default {
+	CreateArticle,
+	QueryArticle,
+	QueryArticles,
+	UpdateArticle,
+	UpdateArticleContent,
+	UpdateArticleSentiments
+};
