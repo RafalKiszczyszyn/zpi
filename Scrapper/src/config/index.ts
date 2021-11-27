@@ -1,4 +1,9 @@
 export default {
-	RABBIT_URL: "amqp://guest:guest@localhost",
-	RABBIT_EXCHANGE_NAME: "feed"
+	RABBIT: {
+		URL: "amqp://guest:guest@localhost",
+		EXCHANGES: {
+			CONSUME: "feed",
+			PUBLISH: "scraps"
+		}
+	},
 }

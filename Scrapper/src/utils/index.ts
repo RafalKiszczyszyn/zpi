@@ -1,7 +1,7 @@
 import { Message } from 'amqplib';
 import fs from 'fs';
 import path from 'path';
-import { IMessage } from '../models/message';
+import { IMessageRecieved } from '../models/message';
 
 type ILogger = (message: string) => void;
 type ILoggerFactory = (loggers: ILogger[]) => ILogger;
@@ -14,8 +14,8 @@ export const formatLogMessage = (message: string): string => {
 }
 
 // Parse bytes array recieved from the RabbitMQ and return a message object
-export const parseRabbitMessage: (msg:Message) => IMessage = (msg: Message) => {
-	return JSON.parse(Buffer.from(msg.content).toString()) as IMessage;
+export const parseRabbitMessage: (msg:Message) => IMessageRecieved = (msg: Message) => {
+	return JSON.parse(Buffer.from(msg.content).toString()) as IMessageRecieved;
 }
 
 // Logger that logs to standard output

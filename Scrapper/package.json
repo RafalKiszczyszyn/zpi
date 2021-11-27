@@ -4,7 +4,7 @@
   "description": "Implementation of scrapping service for ZPI project",
   "main": "src/index.ts",
   "scripts": {
-    "start": "ts-node",
+    "start": "ts-node ./src/index.ts",
     "dev": "nodemon ./src/index.ts "
   },
   "author": {
