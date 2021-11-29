@@ -4,7 +4,7 @@ import config from '../config';
 
 const connect = async () => {
 	try {
-		await mongoose.connect(config.DB_URL)
+		await mongoose.connect(config.DB.URL)
 		ConsoleLogger("Connection with database established successfully");
 	} catch (err) {
 		ConsoleLogger(err);

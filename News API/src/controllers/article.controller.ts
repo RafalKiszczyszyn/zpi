@@ -6,18 +6,21 @@ interface IArticleQueryParams {
 	query?: string;
 }
 
-async function CreateArticle(article: IArticle): Promise<IArticle> {
-	const newArticle = new Article({...article});
-	const data = await newArticle.save();
+export async function CreateArticle(article: IArticle): Promise<IArticle> {
+	const data = await Article.findOneAndUpdate(
+		{ guid: article.guid }, 
+		{ ...article },
+		{ upsert: true, new: true, setDefaultsOnInsert: true }
+	);
 	return data;
 }
 
-async function UpdateArticle(article: IArticle): Promise<IArticle> {
+export async function UpdateArticle(article: IArticle): Promise<IArticle> {
 	const data = await Article.findOneAndUpdate({ guid: article.guid }, { ...article });
 	return data;
 }
 
-async function UpdateArticleContent({
+export async function UpdateArticleContent({
 	content,
 	guid,
 }: { content: string, guid: string }): Promise<IArticle> {
@@ -25,12 +28,12 @@ async function UpdateArticleContent({
 	return data;
 }
 
-async function UpdateArticleSentiments(article: Pick<IArticle, 'guid' | 'sentiment_title' | 'sentiment_content' | 'sentiment_summary' >): Promise<IArticle> {
+export async function UpdateArticleSentiments(article: Pick<IArticle, 'guid' | 'sentiment_title' | 'sentiment_content' | 'sentiment_summary' >): Promise<IArticle> {
 	const data = await Article.findOneAndUpdate({guid: article.guid}, {...article})
 	return data;
 }
 
-async function QueryArticles({
+export async function QueryArticles({
 	before,
 	after,
 	query
@@ -49,7 +52,7 @@ async function QueryArticles({
 	return articles;
 }
 
-async function QueryArticle(uuid: string): Promise<IArticle> {
+export async function QueryArticle(uuid: string): Promise<IArticle> {
 	const article: IArticle = await Article.findById(uuid);
 	return article;
 }

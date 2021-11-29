@@ -1,13 +1,13 @@
-import database_worker from '../../services/database-worker';
-import Article, { IArticle } from '../article.model';
+import DatabaseWorker from '../../services/database-worker';
+import Article, { IArticleModel } from '../article.model';
 
 describe("Article model", () => {
 	beforeAll(async () => {
-		await database_worker.connect();
+		await DatabaseWorker.connect();
 	});
 
 	afterAll(async () => {
-		await database_worker.close();
+		await DatabaseWorker.close();
 	});
 
 	it("Should throw validation errors", () => {
@@ -18,7 +18,7 @@ describe("Article model", () => {
 	it("Should save a article", async () => {
 		expect.assertions(4);
 
-		const article: IArticle = new Article({
+		const article: IArticleModel = new Article({
 			title: 'Ryszard Czarnecki uhonorowany przez uniwersytet. Został doctor honoris causa w Uzbekistanie',
 			summary: 'Europoseł PiS Ryszard Czarnecki został uhonorowany przez University of World Economy and Dyplomacy w Taszkiencie (Uzbekistan). Polityk otrzymał od uczelni doktorat honoris causa za znaczący wkład w partnerstwo strategiczne i stosunki dyplomatyczne oraz wzmacnianie obustronnych relacji i przyjaźni między Republiką Uzbekistanu a UE. Zdjęcia z oficjalnej uroczystości obiegły sieć.',
 			published: new Date('2021-11-07T12:20:00'),

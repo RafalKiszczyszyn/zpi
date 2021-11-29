@@ -1,4 +1,4 @@
-import Article, { IArticle, IMessage } from '../models/article.model';
+import Article, { IArticle, IMessageFeed, IMessageScrapps } from '../models/article.model';
 
 const article: IArticle = new Article({
 	title: 'Ryszard Czarnecki uhonorowany przez uniwersytet. Został doctor honoris causa w Uzbekistanie',
@@ -21,9 +21,16 @@ const article: IArticle = new Article({
 	],
 });
 
-export const Message: IMessage = {
+export const MessageFeed: IMessageFeed = {
 	title: 'Polsat News - Wiadomości - Polska',
 	updated: new Date('2021-11-07T12:40:37'),
 	lang: 'pl',
 	articles: [ article ],
+};
+
+export const MessageScrapps: IMessageScrapps = {
+	title: 'Polsat News - Wiadomości - Polska',
+	updated: new Date('2021-11-07T12:40:37'),
+	lang: 'pl',
+	articles: [ { guid: article.guid, content: 'Mocked content.Mocked content.Mocked content.Mocked content.'} ],
 };

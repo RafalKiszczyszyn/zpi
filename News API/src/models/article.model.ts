@@ -6,7 +6,7 @@ export interface IEnclosure {
 	type: string,
 }
 
-export interface IArticle extends Document {
+export interface IArticle {
 	title: string,
 	summary: string,
 	content?: string,
@@ -20,11 +20,19 @@ export interface IArticle extends Document {
 	sentiment_content?: number,
 	data_complete: boolean,
 }
-export interface IMessage {
+
+export type IArticleModel = IArticle & Document;
+export interface IMessageFeed {
 	title: string,
 	updated: Date,
 	lang: string,
 	articles: Array<IArticle>,
+}
+export interface IMessageScrapps {
+	title: string,
+	updated: Date,
+	lang: string,
+	articles: Array<{guid: string, content: string}>,
 }
 
 const ArticleSchema: Schema = new Schema({
