@@ -16,7 +16,6 @@ const onConsume = (channel: Channel) => async (message: Message | null) => {
 			const content = await Scrapper.scrapeSite(link, contentNodes);
 			return { guid, content };
 		}));
-		console.log(articles)
 		channel.ack(message);
 
 		const resultMessage: IMessagePublished = {

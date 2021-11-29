@@ -8,7 +8,7 @@ let connection: Connection;
 let publishChannel: Channel;
 
 const connectConsumerWorker = async (onConsume: IConsumer = defaultOnConsume) => {
-	ConsoleLogger("Connecting to 'feed' exchange")
+	ConsoleLogger(`Connecting to '${config.RABBIT.EXCHANGES.CONSUME}' exchange`)
 	const channel: Channel = await connection.createChannel();
 	const queue: Replies.AssertQueue = await channel.assertQueue('scrapper.feed', { exclusive: true, durable: true });
 	
