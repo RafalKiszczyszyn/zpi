@@ -1,138 +1,126 @@
 import asyncio
-import pika
-from dataclasses import dataclass, field
-from typing import List
-from concurrent.futures import ThreadPoolExecutor
-from wordnet.core import events, bindings as _bindings_, loggers, controllers
+from typing import Union
+
+from dependency_injector.wiring import inject, Provide
+from zpi_common.services import events, loggers
+
+from wordnet import settings
+from wordnet.service import bindings
 
 
-@dataclass
-class RabbitMqQueue(events.IQueue):
-    exchange: str
-    routing_key: str = field(default='')
-    durable: bool = field(default=False)
-    exclusive: bool = field(default=False)
-    auto_delete: bool = field(default=False)
+class EventLoop:
 
+    class RecoverableError(Exception):
+        def __init__(self, error: Exception):
+            self._error = error
 
-class RabbitMqConsumer(events.IQueueConsumer):
+        @property
+        def error(self):
+            return self._error
 
-    # noinspection PyTypeChecker
-    def __init__(self, bindings: List[_bindings_.Binding],
-                 logger: loggers.ILogger,
-                 exchange,
-                 threads,
-                 messages_limit):
-        self._is_running = True
-        self._loop = asyncio.get_event_loop()
+    class EventReturned(Exception):
+        pass
 
-        self._bindings = bindings
+    class UnknownResult(Exception):
+        def __init__(self, topic):
+            super().__init__(f"Topic='{topic}': Handler returned unknown result")
+
+    class MissingBinding(Exception):
+        def __init__(self, topic):
+            super().__init__(f"Topic='{topic}': Missing binding")
+
+    @inject
+    def __init__(self, connection_factory: events.IConnectionFactory = Provide[events.IConnectionFactory.__name__],
+                 logger: loggers.ILogger = Provide[loggers.ILogger.__name__]):
+        self._connection_factory = connection_factory
         self._logger = logger
 
-        self._connection: pika.adapters.blocking_connection.BlockingConnection = None
-        self._channel: pika.adapters.blocking_connection.BlockingChannel = None
-        self._exchange = exchange
+        self._loop = asyncio.get_event_loop()
+        self._publisher: Union[events.IChannel, None] = None
+        self._consumer: Union[events.IChannel, None] = None
+        self._bindings = bindings.bindings()
 
-        self._pool = ThreadPoolExecutor(threads)
-        self._messages = set()
-        self._msg_limit = messages_limit
-
-    def consume(self):
-        self._logger.info('Connecting with an event queue')
-        self._connection = connection = pika.BlockingConnection()
-        self._is_running = True
-
-        self._channel = connection.channel()
-        self._channel.confirm_delivery()
-        self._channel.exchange_declare(
-            exchange=self._exchange,
-            exchange_type='fanout')
-        self._declare_queues()
-
-        try:
-            self._loop.run_until_complete(self._consume())
-        except Exception as e:
-            self._logger.error('During consuming events, exception occurred', e)
+    def start(self):
+        self._loop.run_until_complete(self._run())
 
     def stop(self):
-        self._is_running = False
+        if self._consumer:
+            self._consumer.cancel()
+        self._loop.call_soon_threadsafe(self._cancel)
 
-    def _declare_queues(self):
-        for binding in self._bindings:
-            if not isinstance(binding.queue, RabbitMqQueue):
-                raise Exception(f'Binding={binding.queue} must be type of {RabbitMqQueue.__name__}')
-            queue: RabbitMqQueue = binding.queue
-
-            self._logger.info(f'Declaring queue={queue.name}')
-            self._channel.queue_declare(
-                queue=queue.name,
-                durable=queue.durable,
-                exclusive=queue.exclusive,
-                auto_delete=queue.auto_delete)
-
-            if queue.exchange != '':
-                self._logger.info(
-                    f'Binding queue={queue.name} with exchange={queue.exchange} '
-                    f'using routing key={queue.routing_key}')
-                self._channel.queue_bind(
-                    queue=queue.name,
-                    exchange=queue.exchange,
-                    routing_key=queue.routing_key)
-
-    async def _consume(self):
-        self._logger.info('Started consuming events')
-        while self._is_running:
-            if len(self._messages) < self._msg_limit:
-                for binding in self._bindings:
-                    self._consume_once(
-                        queue=binding.queue.name,
-                        controller=binding.controller_factory())
-            await asyncio.sleep(0.1)
-
-        self._logger.info('Stopped consuming events')
-        self._connection.close()
+    def _cancel(self):
+        self._dispose()
         self._loop.stop()
 
-    def _consume_once(self, queue: str, controller: controllers.IQueueController):
-        method_frame, header_frame, body = self._channel.basic_get(queue)
-        if method_frame:
-            self._logger.info(
-                f'Dequeued Event(tag={method_frame.delivery_tag}), Controller={type(controller).__name__}')
+    def _dispose(self):
+        if self._connection and not self._connection.is_closed:
+            self._connection.close()
 
-            self._messages.add(method_frame.delivery_tag)
-            future = self._pool.submit(controller.consume, body.decode('utf-8'))
-            future.add_done_callback(self._on_done(delivery_tag=method_frame.delivery_tag))
+    async def _run(self):
+        stopped = False
+        while not stopped:
+            try:
+                await self._consume()
+            except self.RecoverableError as e:
+                self._logger.error('Exception caught when consuming events', error=e)
+            except self.EventReturned:
+                self._logger.warning('Event was requeued')
+            finally:
+                self._logger.info('Closing connection with an event queue')
+                self._dispose()
+            self._logger.info(f'Retrying in {settings.RESTART} seconds')
+            await asyncio.sleep(settings.RESTART)
 
-    def _on_done(self, delivery_tag: int):
-        return lambda future: self._loop.call_soon(self._on_done_thread_safe, future, delivery_tag)
+    async def _consume(self):
+        await self._connect()
+        self._logger.info('Started consuming events')
+        for event in self._consumer.consume():
+            await self._handle_event(event)
 
-    def _on_done_thread_safe(self, future, delivery_tag: int):
-        self._messages.remove(delivery_tag)
-        result = future.result()
-
-        self._logger.info(f'Event(tag={delivery_tag}), Result={type(result).__name__}')
-        if isinstance(result, events.Ack):
-            self._ack(result, delivery_tag)
-        elif isinstance(result, events.Nack):
-            self._nack(result, delivery_tag)
-
-    def _ack(self, result: events.Ack, delivery_tag: int):
+    async def _connect(self):
+        self._logger.info('Connected with an event queue')
         try:
-            # self._publish(result.message)
-            self._channel.basic_ack(delivery_tag)
+            self._connection = self._connection_factory.create()
+            self._publisher = self._connection.publisher(topic='sentiments')
+            self._consumer = self._connection.consumer(topics=list({binding.topic for binding in self._bindings}))
         except Exception as e:
-            self._logger.error('During publishing result an exception occurred', e)
-            self._channel.basic_nack(delivery_tag, requeue=True)
-            self._logger.warning(f'Requeued Event(tag={delivery_tag})')
-            self.stop()
+            raise self.RecoverableError(error=e)
 
-    def _nack(self, result: events.Nack, delivery_tag: int):
-        self._channel.basic_nack(delivery_tag, requeue=result.requeue)
+    async def _handle_event(self, event: events.Event):
+        self._logger.info(f'Received {event}')
+        result = await self._dispatch(event)
 
-    def _publish(self, message: str):
-        self._channel.basic_publish(
-            exchange=self._exchange,
-            routing_key='',
-            body=message.encode(encoding='utf-8'),
-            mandatory=True)
-        self._logger.info(f'Enqueued result on exchange={self._exchange}')
+        if isinstance(result, events.Accept):
+            await self._accept(result)
+        elif isinstance(result, events.Reject):
+            await self._reject(result)
+        else:
+            raise EventLoop.UnknownResult(topic=event.topic)
+
+    async def _dispatch(self, event: events.Event) -> events.Result:
+        for binding in self._bindings:
+            if binding.topic == event.topic:
+                return binding.handler.handle(event)
+        raise self.MissingBinding(topic=event.topic)
+
+    async def _accept(self, result: events.Accept):
+        if result.message:
+            try:
+                message = events.Message(body=result.message, mandatory=True, persistence=False)
+                self._logger.info(f'Publishing {message}')
+                self._publisher.publish(events.Message(body=result.message, mandatory=True, persistence=False))
+            except Exception as e:
+                raise self.RecoverableError(error=e)
+            finally:
+                self._publisher.reject(result.event, requeue=True)
+
+        self._logger.info(f'Accepting {result.event}')
+        self._consumer.accept(event=result.event)
+
+    async def _reject(self, result: events.Reject):
+        self._logger.info(f'Rejecting {result.event}')
+        if result.requeue:
+            self._consumer.reject(event=result.event, requeue=True)
+            raise EventLoop.EventReturned()
+        else:
+            self._consumer.reject(event=result.event, requeue=False)

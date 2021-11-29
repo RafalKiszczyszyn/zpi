@@ -1,10 +1,14 @@
+import sys
+import pathlib
+sys.path.append(str(pathlib.Path(__file__).resolve().parent.parent.parent))
+
 import smtplib
 from typing import List, Tuple
 
 from zpi_common.services.loggers import StdoutLogger
 from zpi_common.services.notifications import ISmtpConnection, ISmtpConnectionFactory, EmailBroadcastService
-from zpi_common.services.events import IQueueController, Response, Ack, IQueueControllerFactory, RabbitMqConnection, \
-    RabbitMqQueue, EventQueueClient, Binding
+from zpi_common.services.events import IQueueController, Response, Ack, IQueueControllerFactory, Binding
+from zpi_common.services.implementations.rabbitmq import AsyncioRabbitMqClientBuilder, RabbitMqQueue
 
 DEBUGGING_SERVER_CMD = 'python -m smtpd -n -c DebuggingServer localhost:1000'
 
@@ -59,17 +63,17 @@ def send_email():
 
 
 def consume():
-    queues = ['test']
-    bindings = [Binding('test', DebuggingControllerFactory())]
+    queues = [RabbitMqQueue('wordnet.test')]
+    bindings = [Binding('wordnet.test', DebuggingControllerFactory())]
 
-    connection = RabbitMqConnection(
-        fanout='test',
-        queues=[RabbitMqQueue(name=queue) for queue in queues],
-        logger=StdoutLogger()
-    )
-
-    client = EventQueueClient(connection=connection, logger=StdoutLogger())
-    client.consume(bindings)
+    client = AsyncioRabbitMqClientBuilder()\
+        .with_connection_parameters(host='localhost', vhost='main')\
+        .with_login(username='wordnet', password='wordnet')\
+        .with_fanout(fanout='sentiments')\
+        .with_queues(queues=queues)\
+        .with_consumer_configuration(threads=1, messages=1)\
+        .build()
+    client.consume(bindings=bindings)
 
 
 if __name__ == '__main__':

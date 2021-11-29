@@ -8,7 +8,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import List, Tuple, Dict, Union
 
-from .loggers import ILogger
+from zpi_common.services.loggers import ILogger
 
 
 class ISmtpConnection(ABC):
@@ -71,7 +71,7 @@ class TlsSecuredSmtpConnection(ISmtpConnection):
 
 class TlsSecuredSmtpConnectionFactory(ISmtpConnectionFactory):
 
-    def __int__(self, host: str, port: int):
+    def __init__(self, host: str, port: int):
         self._host = host
         self._port = port
 
@@ -90,10 +90,10 @@ class EmailBroadcastService(IEmailBroadcastService):
     INFO_TEMPLATE_NAME: str = 'INFO'
 
     def __init__(self,
+                 connection_factory: ISmtpConnectionFactory,
                  credentials: Tuple[str, str],
                  recipients: List[str],
-                 templates: Dict[str, str],
-                 connection_factory: ISmtpConnectionFactory,
+                 templates: Dict[str, str] = {},
                  logger: Union[ILogger, None] = None):
         self._credentials = credentials
         self._recipients = recipients
@@ -125,10 +125,7 @@ class EmailBroadcastService(IEmailBroadcastService):
             msg['From'] = username
             msg['To'] = ', '.join(self._recipients)
             msg['Subject'] = title
-            if plain:
-                msg['Body'] = message
-            else:
-                msg.attach(MIMEText(message, 'html'))
+            msg.attach(MIMEText(message, 'html'))
 
             self._info(f"Sending email with title='{title}' to recipients={self._recipients}. Sender='{username}'")
             connection.send_email(username, self._recipients, msg.as_string())
@@ -157,7 +154,8 @@ class EmailBroadcastService(IEmailBroadcastService):
     @staticmethod
     def _from_default(tags: Dict[str, str]) -> str:
         import json
-        return json.dumps(tags, indent=4, ensure_ascii=False)
+        content = json.dumps(tags, indent=4, ensure_ascii=False, default=str)
+        return f'<html><body><pre><code>{content}</code></pre></body></html>'
 
     def _info(self, info: str):
         if self._logger is not None:

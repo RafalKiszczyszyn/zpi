@@ -1,14 +1,20 @@
+from dataclasses import dataclass
 from typing import List
 
-from wordnet.core import bindings
-from wordnet.service import controllers, events
+from zpi_common.services import events
 
-BINDINGS: List[bindings.Binding] = [
-    bindings.bind(
-        queue=events.RabbitMqQueue(name='test', exchange=''),
-        controller=controllers.TestQueueController),
-    bindings.bind(
-        queue=events.RabbitMqQueue(name='feed', exchange='feed'),
-        controller=controllers.FeedQueueController
-    )
-]
+from wordnet.service import handlers
+
+
+@dataclass(frozen=True)
+class Binding:
+    topic: str
+    handler: events.IEventHandler
+
+
+def bindings() -> List[Binding]:
+    return [
+        Binding(topic='feed', handler=handlers.FeedQueueHandler()),
+        Binding(topic='scraps', handler=handlers.ScrapsQueueHandler()),
+        Binding(topic='', handler=handlers.DebuggingQueueHandler())
+    ]

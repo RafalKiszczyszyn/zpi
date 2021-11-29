@@ -2,6 +2,12 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
+class ScrappedArticle:
+    id: str
+    content: str
+
+
+@dataclass(frozen=True)
 class Article:
     id: str
     title: str
@@ -12,4 +18,4 @@ class Article:
 class Segment:
     id: str
     segment: str
-    sentiment: int
+    polarity: float

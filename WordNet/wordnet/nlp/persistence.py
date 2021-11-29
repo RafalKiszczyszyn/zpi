@@ -1,110 +1,82 @@
 from abc import ABC, abstractmethod
-import sqlite3
-from typing import List
-
-from . import models
-
-
-""" ----- TYPES ---- """
+from typing import Dict, List, Union, Set
+import os
+import zipfile
+import pathlib
+from uuid import uuid4
 
 
-class ISentimentAnnotationsDataAccess(ABC):
+class IWorkspaceManager(ABC):
 
+    @property
     @abstractmethod
-    def __enter__(self):
+    def working_dir(self):
         pass
 
     @abstractmethod
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def save_many(self, contents: List[Union[str, bytes]]) -> List[str]:
         pass
 
     @abstractmethod
-    def close(self):
+    def save(self, content: Union[str, bytes], ext: Union[str, None] = None):
         pass
 
     @abstractmethod
-    def get_annotations(self, sample: models.Sample) -> List[models.SentimentAnnotation]:
+    def compress(self, files: List[str]) -> str:
         pass
-
-
-class ISentimentAnnotationsDataAccessFactory(ABC):
 
     @abstractmethod
-    def create(self) -> ISentimentAnnotationsDataAccess:
+    def decompress(self, archive) -> List[str]:
         pass
-
-
-class ISentimentAnnotationsRepository(ABC):
 
     @abstractmethod
-    def get_annotations(self, samples: List[models.Sample], defined_only=False) -> List[models.SentimentAnnotation]:
+    def clear(self):
         pass
+    
 
+class WorkspaceManager(IWorkspaceManager):
 
-""" ----- IMPLEMENTATIONS ----- """
+    def __init__(self, wd: str):
+        self._wd: str = str(pathlib.Path(wd).resolve())
+        self._resources: Set[str] = set()
 
+    @property
+    def working_dir(self):
+        return self._wd
 
-class PlWordNetDataAccess(ISentimentAnnotationsDataAccess):
+    def save_many(self, contents: List[Union[str, bytes]]) -> List[str]:
+        filenames: List[str] = []
+        for content in contents:
+            filenames.append(self.save(content))
+        return filenames
 
-    # noinspection PyTypeChecker
-    def __init__(self, connection_string):
-        self._conn = sqlite3.Connection(connection_string)
+    def save(self, content: Union[str, bytes], ext: Union[str, None] = None):
+        mode = 'w' if isinstance(content, str) else 'wb'
+        ext = ext if ext else '.txt' if mode == 'w' else '.bin'
+        
+        guid = uuid4()
+        filename = os.path.join(self._wd, str(guid)) + ext
+        self._resources.add(filename)
+        with open(filename, mode) as file:
+            file.write(content)
+        return filename
 
-    def __enter__(self):
-        return self
+    def decompress(self, archive) -> List[str]:
+        with zipfile.ZipFile(archive, 'r') as archive:
+            archive.extractall(self._wd)
+            filenames = [os.path.join(self._wd, info.filename) for info in archive.infolist()]
+        self._resources |= set(filenames)
+        return filenames
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
+    def compress(self, files: List[str]) -> str:
+        path = os.path.join(self._wd, str(uuid4())) + '.zip'
+        self._resources.add(path)
+        with zipfile.ZipFile(path, 'w') as archive:
+            for file in files:
+                archive.write(file, arcname=os.path.basename(file))
+        return path
 
-    def close(self):
-        self._conn.close()
-
-    def get_annotations(self, sample: models.Sample) -> List[models.SentimentAnnotation]:
-        if isinstance(sample, models.Word):
-            where = 'WHERE lemma=:lemma AND pos=:pos'
-            params = {'lemma': sample.text, 'pos': sample.pos}
-        else:
-            where = 'WHERE lemma=:lemma'
-            params = {'lemma': sample.text}
-
-        cursor = self._conn.execute(
-            f'''
-            SELECT annotation 
-            FROM Annotations
-            {where}''', params)
-
-        annotations = []
-        for row in cursor:
-            annotation = models.SentimentAnnotation(
-                sample=sample, annotation=row[0])
-            annotations.append(annotation)
-
-        return annotations
-
-
-class PlWordNetDataAccessFactory(ISentimentAnnotationsDataAccessFactory):
-
-    def __init__(self, connection_string):
-        self._connection_string = connection_string
-
-    def create(self) -> ISentimentAnnotationsDataAccess:
-        return PlWordNetDataAccess(connection_string=self._connection_string)
-
-
-class SentimentAnnotationsRepository(ISentimentAnnotationsRepository):
-
-    def __init__(self, data_access_factory: ISentimentAnnotationsDataAccessFactory):
-        self._data_access_factory = data_access_factory
-
-    def get_annotations(self, samples: List[models.Sample], defined_only=False) -> List[models.SentimentAnnotation]:
-        with self._data_access_factory.create() as data_access:
-            annotations = []
-            for sample in samples:
-                annotations_ = data_access.get_annotations(sample)
-                if len(annotations_) != 0:
-                    annotations.append(annotations_[0])
-                elif not defined_only:
-                    annotations.append(
-                        models.SentimentAnnotation(sample=sample, annotation=0)
-                    )
-            return annotations
+    def clear(self):
+        for resource in self._resources:
+            if os.path.exists(resource):
+                os.remove(resource)
