@@ -1,26 +1,20 @@
 from abc import abstractmethod, ABC
-from dataclasses import dataclass
-from datetime import datetime
 from typing import List
 
 from pymongo import MongoClient
 from pymongo.collection import Collection
 
-
-@dataclass
-class ArticleDao:
-    id: str
-    published: datetime
+from feedreader.service import models
 
 
 class IArticlesDataAccess(ABC):
 
     @abstractmethod
-    def insert(self, articles: List[ArticleDao]):
+    def insert(self, articles: List[models.Article]):
         pass
 
     @abstractmethod
-    def get_by_ids(self, indices: List[str]) -> List[ArticleDao]:
+    def find_existing_ids(self, indices: List[str]) -> List[str]:
         pass
 
 
@@ -32,7 +26,7 @@ class ArticlesDataAccess(IArticlesDataAccess):
         self._collection_name = collection_name
         self._ttl = ttl
 
-    def insert(self, articles: List[ArticleDao]):
+    def insert(self, articles: List[models.Article]):
         if len(articles) == 0:
             return
 
@@ -41,11 +35,11 @@ class ArticlesDataAccess(IArticlesDataAccess):
         collection.insert_many(docs)
         client.close()
 
-    def get_by_ids(self, indices: List[str]) -> List[ArticleDao]:
+    def find_existing_ids(self, indices: List[str]) -> List[str]:
         client, collection = self._connect()
         docs = collection.find({"_id": {"$in": indices}})
         client.close()
-        return list(map(self._map_to_article, docs))
+        return list(map(lambda doc: doc["_id"], docs))
 
     def _connect(self) -> (MongoClient, Collection):
         client = MongoClient(self._url)
@@ -56,15 +50,11 @@ class ArticlesDataAccess(IArticlesDataAccess):
         return client, collection
 
     @staticmethod
-    def _map_to_doc(article: ArticleDao) -> dict:
+    def _map_to_doc(article: models.Article) -> dict:
         return {
-            '_id': article.id,
+            '_id': article.guid,
             'published': article.published
         }
-
-    @staticmethod
-    def _map_to_article(doc: dict):
-        return ArticleDao(id=doc['_id'], published=doc['published'])
 
 
 class IArticlesRepository(ABC):
@@ -74,7 +64,7 @@ class IArticlesRepository(ABC):
         pass
 
     @abstractmethod
-    def save(self, articles: List[ArticleDao]):
+    def save(self, articles: List[models.Article]):
         pass
 
 
@@ -84,9 +74,8 @@ class ArticlesRepository(IArticlesRepository):
         self._data_access = data_access
 
     def filter_existing(self, ids: List[str]) -> List[str]:
-        stored_articles = self._data_access.get_by_ids(ids)
-        stored_ids = set([article.id for article in stored_articles])
+        stored_ids = set(self._data_access.find_existing_ids(ids))
         return list(set(ids) - stored_ids)
 
-    def save(self, articles: List[ArticleDao]):
+    def save(self, articles: List[models.Article]):
         self._data_access.insert(articles)

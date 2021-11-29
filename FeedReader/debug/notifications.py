@@ -1,7 +1,7 @@
 import smtplib
 
 from debug import loggers
-from feedreader.app.notifications import ISmtpConnection, EmailService
+from feedreader.service.notifications import ISmtpConnection, EmailService
 
 
 class SmtpDebugConnection(ISmtpConnection):
@@ -22,7 +22,7 @@ def debug():
     service = EmailService(
         credentials={'username': 'username', 'password': 'password'},
         recipients=['example@example.com'],
-        template='../../appdata/traceback-template.html',
+        template='../../AppData/traceback-template.html',
         connection=SmtpDebugConnection(port=1000),
         logger=loggers.DebugLogger())
 

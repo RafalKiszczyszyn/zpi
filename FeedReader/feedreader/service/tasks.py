@@ -3,10 +3,11 @@ import requests
 from datetime import datetime
 from dependency_injector.wiring import inject, Provide
 from typing import List
+from zpi_common.services import loggers
 
 from feedreader.core import core, tasks
 from feedreader import containers
-from feedreader.app import loggers, logic, models
+from feedreader.service import logic, models
 
 
 class FeedReader(tasks.TaskExecutorBase):
@@ -15,28 +16,26 @@ class FeedReader(tasks.TaskExecutorBase):
             self,
             tasks: List[tasks.ITask],
             publisher: logic.IFeedReaderLogic = Provide[containers.Container.feed_reader_logic],
-            logger: loggers.LoggerBase = Provide[containers.Container.logger],
+            logger: loggers.ILogger = Provide[containers.Container.logger],
             *args, **kwargs):
         super().__init__(tasks)
-        self._channel = core.kwarg_lookup(kwargs=kwargs, name='channel', required=True)
-
         self._publisher = publisher
         self._logger = logger
 
     def before(self):
-        self._logger.log(f'Starting execution of {len(self._tasks)} task(s).')
+        self._logger.info(f'Starting execution of {len(self._tasks)} task(s).')
 
     def before_each(self, context: str):
-        self._logger.log(f'Starting execution of {context}.')
+        self._logger.info(f'Starting execution of {context}.')
 
-    def handle_exception(self, context: str, e: BaseException):
-        self._logger.log_error(f'During execution of {context} an exception occurred:', e)
+    def handle_exception(self, context: str, e: Exception):
+        self._logger.error(f'During execution of {context} an exception occurred:', e)
 
     def after_each(self, context: str, result):
-        self._logger.log(f'Finished execution of {context}.')
+        self._logger.info(f'Finished execution of {context}.')
 
     def after(self, results):
-        self._logger.log(
+        self._logger.info(
             f'Finished execution of {self.tasks_count} task(s). '
             f'{len(results)} succeeded, {self.tasks_count - len(results)} failed.')
 
@@ -49,7 +48,7 @@ class TaskStepBase(tasks.ITaskStep):
     @inject
     def __init__(self,
                  context,
-                 logger: loggers.LoggerBase = Provide[containers.Container.logger],
+                 logger: loggers.ILogger = Provide[containers.Container.logger],
                  *args, **kwargs):
         self._context = context
         self._logger = logger
@@ -62,7 +61,7 @@ class TaskStepBase(tasks.ITaskStep):
         pass
 
     def log(self, content):
-        self._logger.log(f'({self.context}) {content}')
+        self._logger.info(f'({self.context}) {content}')
 
 
 class RssParser(TaskStepBase):
@@ -86,13 +85,11 @@ class RssConverter(TaskStepBase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._source = core.kwarg_lookup(kwargs=kwargs, name='source', required=True)
 
     def execute(self, data):
         self.log(content='Converting RSS feed to consistent format.')
 
         channel = models.Channel(
-            source=self._source,
             title=data['feed'].title,
             updated=self._datetime(data['feed'].updated_parsed),
             lang=data['feed'].language,

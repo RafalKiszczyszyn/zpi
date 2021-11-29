@@ -1,6 +1,6 @@
 from traceback import TracebackException
 
-from feedreader.app.loggers import LoggerBase
+from feedreader.service.loggers import LoggerBase
 
 
 class DebugLogger(LoggerBase):

@@ -146,7 +146,7 @@ class TaskExecutorBase(ITaskExecutor, ABC):
         self.after(results)
 
     @abstractmethod
-    def handle_exception(self, context: str, e: BaseException):
+    def handle_exception(self, context: str, e: Exception):
         pass
 
     @abstractmethod

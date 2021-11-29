@@ -1,9 +1,9 @@
 import asyncio
 from dependency_injector.wiring import Provide, inject
+from zpi_common.services import loggers
 
 from feedreader import containers, settings
 from feedreader.core import tasks
-from feedreader.app import loggers
 
 
 async def execute_tasks(executor: tasks.ITaskExecutor):
@@ -14,12 +14,12 @@ async def execute_tasks(executor: tasks.ITaskExecutor):
 async def run(
         executor_provider: tasks.ITaskExecutorProvider = Provide[containers.Container.executor_provider],
         app_settings: containers.AppSettings = Provide[containers.Container.settings],
-        logger: loggers.LoggerBase = Provide[containers.Container.logger]):
+        logger: loggers.ILogger = Provide[containers.Container.logger]):
     try:
-        logger.log('FeedReader started.')
-        logger.log('Loading tasks from settings.')
+        logger.info('FeedReader started.')
+        logger.info('Loading tasks from settings.')
         executor = executor_provider.load_from_config(settings.EXECUTOR, settings.TASKS)
-        logger.log(f'Loaded {executor.tasks_count} task(s).')
+        logger.info(f'Loaded {executor.tasks_count} task(s).')
 
         running = True
         while running:
@@ -33,9 +33,9 @@ async def run(
     except KeyboardInterrupt:
         pass
     except Exception as e:
-        logger.log_error(info='During tasks execution an unexpected exception occurred:', e=e)
+        logger.error(message='During tasks execution an unexpected exception occurred:', error=e)
     finally:
-        logger.log('FeedReader stopped.')
+        logger.info('FeedReader stopped.')
         asyncio.get_event_loop().stop()
 
 

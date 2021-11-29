@@ -1,16 +1,20 @@
 *
 
-!feedreader
-!tests
-!debug
-!**/*.py
-
-!feedreader/appdata
-!feedreader/appdata/*
-!feedreader/app
-!feedreader/core
-
 !Dockerfile
 !.gitignore
 !README.MD
 !requirements.txt
+
+# Code
+!feedreader
+!feedreader/service
+!feedreader/core
+!tests
+!debug
+!**/*.py
+
+# App Data
+!feedreader/AppData
+!feedreader/AppData/*
+!feedreader/AppData/ssl
+!feedreader/AppData/ssl/*

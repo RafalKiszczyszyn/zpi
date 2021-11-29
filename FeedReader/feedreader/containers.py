@@ -1,10 +1,14 @@
 import ssl
 from dataclasses import dataclass
+from typing import Union
+
 from dependency_injector import containers, providers
+from zpi_common.services import loggers, notifications
+from zpi_common.services.implementations import rabbitmq
 
 import feedreader
 from feedreader import settings
-from feedreader.app import loggers, events, notifications, guid, persistance, logic
+from feedreader.service import persistance, logic
 from feedreader.core import tasks
 
 
@@ -30,9 +34,8 @@ def create_container():
         loggers.StdoutLogger
     )
 
-    add_guid_generator(container, config_key='guid_generator')
     add_database_connection(container, config_key='database')
-    add_event_publisher(container, config_key='event_queue')
+    add_event_queue_connection(container, config_key='event_queue')
     add_email_notifications(container, config_key='email_notifications')
 
     container.executor_provider = providers.Callable(
@@ -42,28 +45,12 @@ def create_container():
     container.feed_reader_logic = providers.Factory(
         logic.FeedReaderLogic,
         articles_repository=container.articles_repository,
-        event_publisher=container.event_publisher,
+        event_queue_connection_factory=container.event_queue_connection_factory,
         logger=container.logger,
         email_service=container.email_service
     )
 
     return container
-
-
-def add_guid_generator(container: containers.DynamicContainer, config_key):
-    prefix = None
-    postfix = None
-    if config_key in settings.CONFIG:
-        if 'prefix' in settings.CONFIG[config_key]:
-            prefix = settings.CONFIG[config_key]['prefix']
-        if 'postfix' in settings.CONFIG[config_key]:
-            postfix = settings.CONFIG[config_key]['postfix']
-
-    container.guid_generator = providers.Factory(
-        guid.GuidGenerator,
-        prefix=prefix,
-        postfix=postfix
-    )
 
 
 def add_database_connection(container: containers.DynamicContainer, config_key):
@@ -81,20 +68,34 @@ def add_database_connection(container: containers.DynamicContainer, config_key):
     )
 
 
-def add_event_publisher(container: containers.DynamicContainer, config_key):
-    ssl_context = None
-
+def add_event_queue_connection(container: containers.DynamicContainer, config_key):
+    context: Union[ssl.SSLContext(), None] = None
     if 'ssl' in settings.CONFIG[config_key]:
-        ssl_context = {
-            'cafile': str(settings.CONFIG[config_key]['ssl']["cafile"]),
-            'certfile': str(settings.CONFIG[config_key]['ssl']["certfile"]),
-            'keyfile': str(settings.CONFIG[config_key]['ssl']["keyfile"])
-        }
+        context = ssl.SSLContext()
+        context.load_verify_locations(str(settings.CONFIG[config_key]['ssl']["cafile"]))
+        context.load_cert_chain(
+            str(settings.CONFIG[config_key]['ssl']["certfile"]),
+            str(settings.CONFIG[config_key]['ssl']["keyfile"]))
 
-    container.event_publisher = providers.Singleton(
-        events.RabbitMQPublisher,
-        url=container.config.event_queue.url,
-        ssl_context=ssl_context
+    class ConfigProvider(rabbitmq.IConfigProvider):
+
+        def queue(self) -> rabbitmq.QueueConfig:
+            return rabbitmq.QueueConfig(
+                name=f'feedreader.queue', durable=True, auto_delete=False, exclusive=False)
+
+        def fanout(self, topic: str) -> rabbitmq.FanoutConfig:
+            return rabbitmq.FanoutConfig(name=topic, durable=True, auto_delete=False)
+
+    container.event_queue_connection_factory = providers.Factory(
+        rabbitmq.RabbitMqConnectionFactory,
+        params=rabbitmq.RabbitMqConnectionParams(
+            host=settings.CONFIG[config_key]["host"],
+            vhost=settings.CONFIG[config_key]["vhost"],
+            username=settings.CONFIG[config_key]["username"],
+            password=settings.CONFIG[config_key]["password"],
+            sslContext=context,
+            configProvider=ConfigProvider()
+        )
     )
 
 
@@ -103,18 +104,14 @@ def add_email_notifications(container: containers.DynamicContainer, config_key):
         container.email_service = providers.Object(None)
         return
 
-    container.smtp_connection = providers.Factory(
-        notifications.TlsSecuredSmtpConnection,
-        host=settings.CONFIG[config_key]['host'],
-        port=settings.CONFIG[config_key]['port']
-    )
-
     container.email_service = providers.Factory(
-        notifications.EmailService,
+        notifications.EmailBroadcastService,
         connection=container.smtp_connection,
-        credentials=settings.CONFIG[config_key]['credentials'],
-        template=str(settings.CONFIG[config_key]['template']),
+        credentials=(settings.CONFIG[config_key]['credentials']['username'],
+                     settings.CONFIG[config_key]['credentials']['password']),
         recipients=settings.CONFIG[config_key]['recipients'],
+        connection_factory=notifications.TlsSecuredSmtpConnectionFactory(
+            host=settings.CONFIG[config_key]['host'], port=settings.CONFIG[config_key]['port']),
         logger=container.logger
     )
 

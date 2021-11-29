@@ -1,8 +1,8 @@
 ## Installation
 #### Docker Image
-To create a docker image, run the command:
+Build docker image from repo root:
 ```
-docker build -t feedreader .
+docker build -t feedreader -f /FeedReader/Dockerfile .
 ```
 Then, start the new container with the command:
 ```
