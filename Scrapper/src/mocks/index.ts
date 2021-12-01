@@ -1,6 +1,6 @@
-import { IMessage } from "../models/message"
+import { IMessageRecieved } from "../models/message"
 
-const RabbitMessage: IMessage = {
+const RabbitMessage: IMessageRecieved = {
 	title: 'Example title',
 	updated: new Date(),
 	lang: 'en',

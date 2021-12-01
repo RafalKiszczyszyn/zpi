@@ -5,7 +5,8 @@
   "main": "src/index.ts",
   "scripts": {
     "start": "ts-node ./src/index.ts",
-    "dev": "nodemon ./src/index.ts "
+    "dev": "nodemon ./src/index.ts ",
+		"test": "jest --coverage"
   },
   "author": {
     "name": "Maciej Witkowski",
@@ -21,6 +22,9 @@
   "devDependencies": {
     "@types/amqplib": "^0.8.2",
     "@types/axios": "^0.14.0",
-    "@types/cheerio": "^0.22.30"
+    "@types/cheerio": "^0.22.30",
+    "@types/jest": "^27.0.3",
+    "jest": "^27.4.3",
+    "ts-jest": "^27.0.7"
   }
 }
