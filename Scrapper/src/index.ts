@@ -26,9 +26,9 @@ const onConsume = (channel: Channel) => async (message: Message | null) => {
 	}
 }
 
-const startService = () => {
+const startService = async () => {
 	try {
-		EventWorker.connect(onConsume);
+		await EventWorker.connect(onConsume);
 	} catch (e) {
 		ConsoleLogger("Service could not start");
 		EventWorker.disconnect();

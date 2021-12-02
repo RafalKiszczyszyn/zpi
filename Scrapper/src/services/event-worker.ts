@@ -18,8 +18,10 @@ const connectConsumerWorker = async (onConsume: IConsumer = defaultOnConsume) =>
 
 const disconnectWorker = () => {
 	ConsoleLogger("Disconectiong from RabbitMQ")
-	connection.removeAllListeners();
-	connection.close();
+	if (connection) {
+		connection.removeAllListeners();
+		connection.close();
+	}
 }
 
 const defaultOnConsume: IConsumer = (channel) => (msg) => {
@@ -53,7 +55,6 @@ const connectWorker = async (onConsume: IConsumer) => {
 	ConsoleLogger("Creating connection with RabbitMQ")
 	connection = await connect(config.RABBIT.URL);
 	connection.on('error', (err) => console.log(err))
-
 	await connectPublisherWorker();
 	await connectConsumerWorker(onConsume);
 }
