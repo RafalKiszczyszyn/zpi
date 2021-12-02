@@ -1,0 +1,30 @@
+{
+  "name": "scrapper",
+  "version": "1.0.0",
+  "description": "Implementation of scrapping service for ZPI project",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "ts-node ./src/index.ts",
+    "dev": "nodemon ./src/index.ts ",
+		"test": "jest --coverage"
+  },
+  "author": {
+    "name": "Maciej Witkowski",
+    "email": "maciekwitkowski322@gmail.com"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "amqplib": "^0.8.0",
+    "axios": "^0.24.0",
+    "cheerio": "^1.0.0-rc.10",
+    "ts-node": "^10.4.0"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.8.2",
+    "@types/axios": "^0.14.0",
+    "@types/cheerio": "^0.22.30",
+    "@types/jest": "^27.0.3",
+    "jest": "^27.4.3",
+    "ts-jest": "^27.0.7"
+  }
+}
