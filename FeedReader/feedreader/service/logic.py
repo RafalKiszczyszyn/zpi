@@ -114,6 +114,7 @@ class FeedReaderLogic(IFeedReaderLogic):
                 title=channel.title,
                 updated=channel.updated,
                 lang=channel.lang,
+                contentNodes=channel.contentNodes,
                 articles=[])
             for article in channel.articles:
                 articles_mapped_to_channels[article.guid] = (new_channel, article)
