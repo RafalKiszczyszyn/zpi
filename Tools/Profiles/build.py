@@ -105,7 +105,7 @@ class GenerateKey(IOperation):
         self.name = name
 
     def perform(self):
-        result = subprocess.run(f'openssl genrsa -out {self.name}.key 2048')
+        result = subprocess.run(f'openssl genrsa -out {self.name}.key 2048', shell=True)
         if result.returncode != 0:
             raise Exception('Generating key with openssl failed')
 
@@ -120,8 +120,8 @@ class GenerateCa(IOperation):
 
     def perform(self):
         details = get_details('root')
-        cmd = f'openssl req -nodes -x509 -key {self.key}.key -out {self.name}.pem -subj "{details}"'
-        result = subprocess.run(cmd)
+        cmd = f'openssl req -new -nodes -x509 -key {self.key}.key -out {self.name}.pem -subj "{details}"'
+        result = subprocess.run(cmd, shell=True)
         if result.returncode != 0:
             raise Exception('Generating certificate authority with openssl failed')
 
@@ -137,7 +137,7 @@ class GenerateCsr(IOperation):
 
     def perform(self):
         details = get_details(self.name)
-        result = subprocess.run(f'openssl req -new -key {self.key}.key -out {self.name}.csr -subj "{details}"')
+        result = subprocess.run(f'openssl req -new -key {self.key}.key -out {self.name}.csr -subj "{details}"', shell=True)
         if result.returncode != 0:
             raise Exception('Generating certificate signing request with openssl failed')
 
@@ -155,7 +155,7 @@ class GenerateCrt(IOperation):
     def perform(self):
         cmd = f"openssl x509 -req -in {self.name}.csr -CA {self.ca}.pem -CAkey {self.rootKey}.key -CAcreateserial -out {self.name}.crt -days 3600 -sha256"
         print(cmd)
-        result = subprocess.run(cmd)
+        result = subprocess.run(cmd, shell=True)
         if result.returncode != 0:
             raise Exception('Generating certificate with openssl failed')
 
@@ -252,13 +252,14 @@ def build(transaction: Transaction):
     initSslContext(transaction)
 
     # Build broker
-    buildPath = os.path.join(meta['root'], pathlib.Path(meta['buildPath']).resolve())
+    # buildPath = os.path.join(meta['root'], pathlib.Path(meta['buildPath']).resolve())
+    buildPath = str(pathlib.Path(meta['root']).resolve() / meta['buildPath'])
     buildSslContext('rabbitmq', buildPath, transaction)
     
     userProfiles = []
     # Build each service
     for service in services:    
-        path = os.path.join(meta['root'], pathlib.Path(service['buildPath']).resolve())
+        path = str(pathlib.Path(meta['root']).resolve() / service['buildPath'])
         buildSslContext(service['name'], path, transaction)
 
         userProfiles.append(buildUserProfile(service))

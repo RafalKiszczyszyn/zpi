@@ -10,7 +10,7 @@ Application settings.
 """
 CONFIG = {
     # Fetch feed every x seconds.
-    'heartbeat': 10,     # 15 min
+    'heartbeat': 2 * 60,     # 15 min
 
     # MongoDB database settings
     'database': {

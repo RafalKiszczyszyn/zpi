@@ -14,6 +14,12 @@ export default {
 			SCRAPS: 'articles.scraps',
 			SENTIMENTS: 'articles.sentiments'
 		},
-		URL: "amqp://admin:admin@rabbtio",
+		CONNECTION: {
+			PROTOCOL: "amqp",
+			USER: "admin",
+			PASSWORD: "admin",
+			HOST: "rabbito",
+			VHOST: "main",
+		}
 	}
 }

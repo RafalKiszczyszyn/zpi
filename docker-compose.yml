@@ -9,18 +9,32 @@ services:
       - "5672:5672"
     networks:
       - zpi_network
-  # feedreader:
-  #   depends_on:
-  #     - "rabbito"
-  #   build: 
-  #     context: .
-  #     dockerfile: ./FeedReader/Dockerfile
-  #   links:
-  #     - "rabbito:rabbito"
+  feedreader:
+    depends_on:
+      - "rabbito"
+    build: 
+      context: .
+      dockerfile: ./FeedReader/Dockerfile
+    links:
+      - "rabbito:rabbito"
+    networks:
+      - zpi_network
+  wordnet:
+    depends_on:
+      - "rabbito"
+    build: 
+      context: .
+      dockerfile: ./WordNet/Dockerfile
+    links:
+      - "rabbito:rabbito"
+    networks:
+      - zpi_network
   articlesapi:
     depends_on:
       - "rabbito"
     build: ./News API
+    ports:
+      - "4010:4010"
     links:
       - "rabbito:rabbito"
     networks:

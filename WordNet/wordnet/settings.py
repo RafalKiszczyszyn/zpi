@@ -5,7 +5,7 @@ APPDATA = BASE / 'AppData'
 
 """ RabbitMQ Client Settings """
 # Host
-HOST = 'localhost'
+HOST = 'rabbito'
 
 # Virtual host
 VHOST = 'main'
@@ -27,7 +27,7 @@ SSL_CERT = APPDATA / 'ssl' / 'wordnet.crt'
 SSL_KEY = APPDATA / 'ssl' / 'wordnet.key'
 
 # If an exception occurs, sleep N minutes and restart
-RESTART = 5 * 60
+RESTART = 1 * 60
 
 """ Nlp Service Settings """
 CLARIN_USER = '246655@student.pwr.edu.pl'

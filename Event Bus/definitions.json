@@ -1,6 +1,15 @@
 {
     "bindings": [],
-    "exchanges": [],
+    "exchanges": [
+        {
+            "arguments":{},
+            "auto_delete":false,
+            "durable":true,
+            "name":"feed",
+            "type":"fanout",
+            "vhost":"main"
+        }
+    ],
     "global_parameters": [],
     "parameters": [],
     "permissions": [
@@ -17,6 +26,34 @@
             "user": "admin",
             "vhost": "logging",
             "write": ".*"
+        },
+        {
+            "configure": "^(amq\\.gen.*|feedreader\\..*|feed)$",
+            "read": "^(amq\\.gen.*|feedreader\\..*)$",
+            "user": "feedreader",
+            "vhost": "main",
+            "write": "^(amq\\.gen.*|feedreader\\..*|feed)$"
+        },
+        {
+            "configure": "^(amq\\.gen.*|scrapper\\..*|scraps)$",
+            "read": "^(amq\\.gen.*|scrapper\\..*|feed)$",
+            "user": "scrapper",
+            "vhost": "main",
+            "write": "^(amq\\.gen.*|scrapper\\..*|scraps)$"
+        },
+        {
+            "configure": "^(amq\\.gen.*|wordnet\\..*|sentiments)$",
+            "read": "^(amq\\.gen.*|wordnet\\..*|feed|scraps)$",
+            "user": "wordnet",
+            "vhost": "main",
+            "write": "^(amq\\.gen.*|wordnet\\..*|sentiments)$"
+        },
+        {
+            "configure": "^(amq\\.gen.*|articlesapi\\..*)$",
+            "read": "^(amq\\.gen.*|articlesapi\\..*|feed|scraps|sentiments)$",
+            "user": "articlesapi",
+            "vhost": "main",
+            "write": "^(amq\\.gen.*|articlesapi\\..*)$"
         }
     ],
     "policies": [],
@@ -33,6 +70,34 @@
             "tags": [
                 "administrator"
             ]
+        },
+        {
+            "hashing_algorithm": "rabbit_password_hashing_sha256",
+            "limits": {},
+            "name": "feedreader",
+            "password_hash": "/SarrgCw4WXtUaYqTzKKTUon0bBlMtCbBrkdhgPeGIo10eV2",
+            "tags": []
+        },
+        {
+            "hashing_algorithm": "rabbit_password_hashing_sha256",
+            "limits": {},
+            "name": "scrapper",
+            "password_hash": "wI8vYsiuyhgmn/k0Dm3pNOKBia1YP/vpYkXjkNX6dMSk6gD+",
+            "tags": []
+        },
+        {
+            "hashing_algorithm": "rabbit_password_hashing_sha256",
+            "limits": {},
+            "name": "wordnet",
+            "password_hash": "Kp8mkHQv9ife3CGGs6fgMWEQ98Z/3W1H/i9J+4Hb5j1ElUI9",
+            "tags": []
+        },
+        {
+            "hashing_algorithm": "rabbit_password_hashing_sha256",
+            "limits": {},
+            "name": "articlesapi",
+            "password_hash": "7ZoV5bfY9zDPnYNmiRbxgdUzmwDOaCcQ4kg4LQNuF0xcRAP1",
+            "tags": []
         }
     ],
     "vhosts": [

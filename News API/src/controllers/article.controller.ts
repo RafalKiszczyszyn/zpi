@@ -28,8 +28,15 @@ export async function UpdateArticleContent({
 	return data;
 }
 
-export async function UpdateArticleSentiments(article: Pick<IArticle, 'guid' | 'sentiment_title' | 'sentiment_content' | 'sentiment_summary' >): Promise<IArticle> {
-	const data = await Article.findOneAndUpdate({guid: article.guid}, {...article})
+interface ISegment {
+	guid: string;
+	sentiment_title?: number;
+	sentiment_description?: number;
+	sentiment_content?: number;
+}
+
+export async function UpdateArticleSentiments(segment: ISegment): Promise<IArticle> {
+	const data = await Article.findOneAndUpdate({ guid: segment.guid }, { ...segment });
 	return data;
 }
 
