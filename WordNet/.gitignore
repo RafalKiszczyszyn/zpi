@@ -1,0 +1,29 @@
+*
+
+!.gitignore
+!README.MD
+!requirements.txt
+
+# WordNet + AppData
+!wordnet
+!wordnet/AppData
+!wordnet/AppData/ssl
+!wordnet/AppData/ssl/*
+!wordnet/AppData/temp
+!wordnet/AppData/temp/*
+
+# NLP
+!wordnet/nlp
+
+# Service
+!wordnet/service
+
+# Tools
+!tools
+
+# Exclude all python files
+!**/*.py
+
+# Docker
+!Dockerfile
+!.dockerignore
