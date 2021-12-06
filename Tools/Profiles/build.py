@@ -1,9 +1,15 @@
+import pathlib
+import sys
+from typing import Tuple; sys.path.append(str(pathlib.Path(__file__).resolve().parent))
+
 import os
 import shutil
 import subprocess
 import json
 import pathlib
 from abc import ABC, abstractmethod
+
+import rabbitmq_utils
 
 
 BASE = pathlib.Path(__file__).resolve().parent
@@ -199,26 +205,41 @@ def buildSslContext(serviceName: str, buildPath: str, transaction: Transaction):
     transaction.perform(CopyFile(serviceName + '.crt', os.path.join(sslContext, serviceName + '.crt')))
 
 
-def buildUserProfile(service: dict) -> str:
+def buildUserProfile(service: dict) -> Tuple[dict, dict]:
     serviceName = service['name']
     print(f"[INFO] Building service='{serviceName}' user profile")
     
     credentials = service['credentials'].split(':')
-    userProfile = f'\nrabbitmqctl add_user "{credentials[0]}" "{credentials[1]}"'
-
+    
+    user = {
+        "hashing_algorithm": "rabbit_password_hashing_sha256",
+        "limits": {},
+        "name": credentials[0],
+        "password_hash": rabbitmq_utils.generateRabbitMqPassword(credentials[1]),
+        "tags": []
+    }
+    
+    permissions = []
     privateResources = [r'amq\.gen.*', rf'{serviceName}\..*']
-    for permissions in service['permissions']:
-        configure = privateResources + permissions['publish']
-        write = privateResources + permissions['publish']
-        read = privateResources + permissions['consume']
+    for _permissions in service['permissions']:
+        configure = privateResources + _permissions['publish']
+        write = privateResources + _permissions['publish']
+        read = privateResources + _permissions['consume']
 
         configure = f'^({"|".join(configure)})$'
         write = f'^({"|".join(write)})$'
         read = f'^({"|".join(read)})$'
 
-        userProfile += f'\nrabbitmqctl set_permissions -p "{permissions["vhost"]}" "{credentials[0]}" "{configure}" "{write}" "{read}"'
+        permissions.append({
+            "configure": configure,
+            "read": read, 
+            "user": credentials[1], 
+            "vhost": _permissions['vhost'], 
+            "write": write
+        })
     
-    return userProfile
+    return user, permissions
+
 
 def build(transaction: Transaction):
     transaction.perform(ChDir(BASE))
@@ -234,23 +255,25 @@ def build(transaction: Transaction):
     buildPath = os.path.join(meta['root'], pathlib.Path(meta['buildPath']).resolve())
     buildSslContext('rabbitmq', buildPath, transaction)
     
-    userProfiles = '#!/bin/bash\n'
+    userProfiles = []
     # Build each service
     for service in services:    
         path = os.path.join(meta['root'], pathlib.Path(service['buildPath']).resolve())
         buildSslContext(service['name'], path, transaction)
 
-        userProfiles += buildUserProfile(service)
+        userProfiles.append(buildUserProfile(service))
     
-    scripts = os.path.join(buildPath, 'scripts')
-    if not os.path.exists(scripts):
-        transaction.perform(MkDir(scripts))
-
-    transaction.perform(MkFile('mkusers.sh'))
-    with open('mkusers.sh', 'w', newline='\n') as f:
-        f.write(userProfiles)
-    transaction.perform(CopyFile('mkusers.sh', os.path.join(scripts, 'mkusers.sh')))
-
+    definitions = os.path.join(buildPath, 'definitions.json')
+    with open(definitions, 'r') as f:
+        schema = json.load(f)
+    
+    for user, permissions in userProfiles:
+        schema['users'].append(user)
+        schema['permissions'] += permissions
+    
+    with open(definitions, 'w') as f:
+        json.dump(schema, f, indent=4)
+        
 
 def main():
     print('[INFO] With transaction')
