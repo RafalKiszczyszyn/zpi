@@ -62,12 +62,12 @@ jobs:
       - name: Install dependencies
         run: |
           cd FeedReader/
-          pip install -r requirements.txt --find-links ./Libs/Python/
+          pip install -r requirements.txt --find-links ../Libs/Python/
       
       # Run module unit tests    
       - name: Run tests with unittest
         run: |
-          cd Feedreader/tests
+          cd FeedReader/tests
           python -m unittest discover
 
   WordNet:
@@ -94,7 +94,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd WordNet/
-          pip install -r requirements.txt --find-links ./Libs/Python/
+          pip install -r requirements.txt --find-links ../Libs/Python/
       
       # Run module unit tests    
       - name: Run tests with unittest
