@@ -17,21 +17,21 @@ CONFIG = {
         'connection_string': 'mongodb+srv://backend:backend@cluster0.pifu7.mongodb.net/ArticlesClassificationSystem?retryWrites=true&w=majority',
         'database': 'feedreader',
         'collection': 'CachedArticles',
-        'ttl': 3*24*60*60   # 3 days
+        'ttl': 7*24*60*60   # 3 days
     },
 
     # Event queue settings
     'event_queue': {
         'host': 'rabbito',
         'vhost': 'main',
-        'username': 'admin',
-        'password': 'admin'
-        # 'ssl': {
-        #     'cafile': APPDATA / 'ssl' / 'ca.pem',
-        #     'certfile': APPDATA / 'ssl' / 'feedreader.crt',
-        #     'keyfile': APPDATA / 'ssl' / 'feedreader.key'
-        # }
-    }
+        'username': 'feedreader',
+        'password': 'feedreader',
+        'ssl': {
+            'cafile': APPDATA / 'ssl' / 'ca.pem',
+            'certfile': APPDATA / 'ssl' / 'feedreader.crt',
+            'keyfile': APPDATA / 'ssl' / 'feedreader.key'
+        }
+    },
 }
 
 EXECUTOR = Class(

@@ -71,11 +71,14 @@ def add_database_connection(container: containers.DynamicContainer, config_key):
 def add_event_queue_connection(container: containers.DynamicContainer, config_key):
     context: Union[ssl.SSLContext(), None] = None
     if 'ssl' in settings.CONFIG[config_key]:
-        context = ssl.SSLContext()
-        context.load_verify_locations(str(settings.CONFIG[config_key]['ssl']["cafile"]))
-        context.load_cert_chain(
-            str(settings.CONFIG[config_key]['ssl']["certfile"]),
-            str(settings.CONFIG[config_key]['ssl']["keyfile"]))
+        try:
+            context = ssl.SSLContext()
+            context.load_verify_locations(str(settings.CONFIG[config_key]['ssl']["cafile"]))
+            context.load_cert_chain(
+                str(settings.CONFIG[config_key]['ssl']["certfile"]),
+                str(settings.CONFIG[config_key]['ssl']["keyfile"]))
+        except FileNotFoundError as e:
+            print(f'Skipping SSL configuration because: {e}')
 
     class ConfigProvider(rabbitmq.IConfigProvider):
 
