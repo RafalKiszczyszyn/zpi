@@ -18,8 +18,8 @@
 # Service
 !wordnet/service
 
-# Tools
-!tools
+# Tests
+!tests
 
 # Exclude all python files
 !**/*.py
