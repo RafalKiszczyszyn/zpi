@@ -1,4 +1,5 @@
 import asyncio
+import signal
 from typing import Union
 
 from dependency_injector.wiring import inject, Provide
@@ -9,6 +10,10 @@ from wordnet.service import bindings
 
 
 class EventLoop:
+
+    def handleTerminationSignal(self):
+        self._dispose()
+        self._loop.stop()
 
     class RecoverableError(Exception):
         def __init__(self, error: Exception):
@@ -32,10 +37,13 @@ class EventLoop:
     @inject
     def __init__(self, connection_factory: events.IConnectionFactory = Provide[events.IConnectionFactory.__name__],
                  logger: loggers.ILogger = Provide[loggers.ILogger.__name__]):
+        signal.signal(signal.SIGTERM, self.handleTerminationSignal)
+
         self._connection_factory = connection_factory
         self._logger = logger
 
         self._loop = asyncio.get_event_loop()
+        self._connection: Union[events.IConnection, None] = None
         self._publisher: Union[events.IChannel, None] = None
         self._consumer: Union[events.IChannel, None] = None
         self._bindings = bindings.bindings()
@@ -53,6 +61,7 @@ class EventLoop:
         self._loop.stop()
 
     def _dispose(self):
+        self._logger.info('Closing connection with an event queue')
         if self._connection and not self._connection.is_closed:
             self._connection.close()
 
@@ -66,7 +75,6 @@ class EventLoop:
             except self.EventReturned:
                 self._logger.warning('Event was requeued')
             finally:
-                self._logger.info('Closing connection with an event queue')
                 self._dispose()
             self._logger.info(f'Retrying in {settings.RESTART} seconds')
             await asyncio.sleep(settings.RESTART)
