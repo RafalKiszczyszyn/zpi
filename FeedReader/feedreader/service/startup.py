@@ -1,4 +1,7 @@
 import asyncio
+import signal
+from contextlib import contextmanager
+
 from dependency_injector.wiring import Provide, inject
 from zpi_common.services import loggers
 
@@ -10,12 +13,19 @@ async def execute_tasks(executor: tasks.ITaskExecutor):
     executor.execute()
 
 
+def handleTerminationSignal(logger: loggers.ILogger, loop: asyncio.AbstractEventLoop):
+    logger.info('FeedReader stopped.')
+    loop.stop()
+
+
 @inject
 async def run(
         executor_provider: tasks.ITaskExecutorProvider = Provide[containers.Container.executor_provider],
         app_settings: containers.AppSettings = Provide[containers.Container.settings],
         logger: loggers.ILogger = Provide[containers.Container.logger]):
     try:
+        signal.signal(signal.SIGTERM, lambda: handleTerminationSignal(logger, asyncio.get_event_loop()))
+
         logger.info('FeedReader started.')
         logger.info('Loading tasks from settings.')
         executor = executor_provider.load_from_config(settings.EXECUTOR, settings.TASKS)
