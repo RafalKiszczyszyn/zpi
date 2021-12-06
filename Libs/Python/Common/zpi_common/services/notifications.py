@@ -112,13 +112,11 @@ class EmailBroadcastService(IEmailBroadcastService):
 
     def _with_formatted_message(self, template: str, title: str, tags: Dict[str, str]):
         message = self._from_template(template=template, tags=tags)
-        plain = message is None
-        if plain:
-            self._warn('Using plain text instead')
+        if message is None:
             message = self._from_default(tags=tags)
-        self._broadcast(title=title, message=message, plain=plain)
+        self._broadcast(title=title, message=message)
 
-    def _broadcast(self, title: str, message: str, plain=False):
+    def _broadcast(self, title: str, message: str):
         with self._connection_factory.create(self._credentials) as connection:
             username, _ = self._credentials
             msg = MIMEMultipart()

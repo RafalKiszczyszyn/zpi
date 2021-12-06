@@ -8,6 +8,10 @@ import pika
 from zpi_common.services.events import Event, Message, IChannel, IConnection
 
 
+class OperationProhibited(Exception):
+    pass
+
+
 class RabbitMqChannel(events.IChannel):
 
     def __init__(self, channel: pika.adapters.blocking_connection.BlockingChannel,
@@ -28,9 +32,8 @@ class RabbitMqChannel(events.IChannel):
         return self._channel.is_closed
 
     def publish(self, message: Message):
-        self._assert_is_open()
-        if self.mode not in [events.ChannelMode.PUBLISHING, self.mode == events.ChannelMode.BIDIRECTIONAL]:
-            raise Exception(f'{type(self).__name__} is prohibited to publish')
+        self._assertIsOpen()
+        self._assertPublishingIsAllowed()
         self._channel.basic_publish(
             exchange=self._fanout,
             routing_key='',
@@ -39,30 +42,37 @@ class RabbitMqChannel(events.IChannel):
             mandatory=message.mandatory)
 
     def consume(self) -> Iterable[Event]:
-        self._assert_is_open()
-        if self.mode not in [events.ChannelMode.CONSUMING, self.mode == events.ChannelMode.BIDIRECTIONAL]:
-            raise Exception(f'{type(self).__name__} is prohibited to consume')
+        self._assertIsOpen()
+        self._assertConsumingIsAllowed()
         for frame, method, body in self._channel.consume(queue=self._queue, auto_ack=False):
             yield events.Event(topic=frame.exchange, tag=frame.delivery_tag, body=body.decode('utf-8'))
 
     def cancel(self):
-        self._assert_is_open()
+        self._assertIsOpen()
         self._channel.cancel()
 
     def accept(self, event: events.Event):
-        self._assert_is_open()
+        self._assertIsOpen()
         self._channel.basic_ack(delivery_tag=event.tag, multiple=False)
 
     def reject(self, event: events.Event, requeue: bool = False):
-        self._assert_is_open()
+        self._assertIsOpen()
         self._channel.basic_reject(delivery_tag=event.tag, requeue=requeue)
 
     def close(self):
         if self._channel.is_open:
             self._channel.close()
 
-    def _assert_is_open(self):
-        if not self._channel.is_open:
+    def _assertPublishingIsAllowed(self):
+        if self.mode not in [events.ChannelMode.PUBLISHING, events.ChannelMode.BIDIRECTIONAL]:
+            raise OperationProhibited(f'{type(self).__name__} is prohibited to publish')
+
+    def _assertConsumingIsAllowed(self):
+        if self.mode not in [events.ChannelMode.CONSUMING, events.ChannelMode.BIDIRECTIONAL]:
+            raise OperationProhibited(f'{type(self).__name__} is prohibited to consume')
+
+    def _assertIsOpen(self):
+        if self._channel.is_closed:
             raise Exception(type(self).__name__ + ' is closed')
 
 
@@ -113,16 +123,10 @@ class RabbitMqConnectionParams:
 
 class RabbitMqConnection(events.IConnection):
 
-    def __init__(self, params: RabbitMqConnectionParams):
-        self._connection = pika.BlockingConnection(
-            pika.ConnectionParameters(
-                host=params.host,
-                virtual_host=params.vhost,
-                credentials=pika.PlainCredentials(username=params.username, password=params.password),
-                ssl_options=pika.SSLOptions(params.sslContext) if params.sslContext else None
-            )
-        )
-        self._configProvider = params.configProvider
+    def __init__(self, connection: pika.BlockingConnection,
+                 configProvider: Union[IConfigProvider, None] = None):
+        self._connection = connection
+        self._configProvider = configProvider if configProvider else DefaultConfigProvider()
 
     @property
     def is_closed(self) -> bool:
@@ -177,7 +181,7 @@ class RabbitMqConnection(events.IConnection):
             mode=events.ChannelMode.CONSUMING)
 
     def _assert_is_open(self):
-        if not self._connection.is_open:
+        if self._connection.is_closed:
             raise Exception(type(self).__name__ + ' is closed')
 
 
@@ -186,4 +190,14 @@ class RabbitMqConnectionFactory(events.IConnectionFactory):
     params: RabbitMqConnectionParams
 
     def create(self) -> IConnection:
-        return RabbitMqConnection(params=self.params)
+        connection = pika.BlockingConnection(
+            pika.ConnectionParameters(
+                host=self.params.host,
+                virtual_host=self.params.vhost,
+                credentials=pika.PlainCredentials(username=self.params.username, password=self.params.password),
+                ssl_options=pika.SSLOptions(self.params.sslContext) if self.params.sslContext else None
+            )
+        )
+        return RabbitMqConnection(
+            connection=connection,
+            configProvider=self.params.configProvider)
