@@ -85,6 +85,7 @@ class RssConverter(TaskStepBase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._contentNodes = core.kwarg_lookup(kwargs, 'contentNodes', required=True)
 
     def execute(self, data):
         self.log(content='Converting RSS feed to consistent format.')
@@ -93,6 +94,7 @@ class RssConverter(TaskStepBase):
             title=data['feed'].title,
             updated=self._datetime(data['feed'].updated_parsed),
             lang=data['feed'].language,
+            contentNodes=self._contentNodes,
             articles=[]
         )
 
