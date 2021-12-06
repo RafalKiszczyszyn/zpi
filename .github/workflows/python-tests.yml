@@ -67,7 +67,7 @@ jobs:
       # Run module unit tests    
       - name: Run tests with unittest
         run: |
-          cd Feedreader/tests
+          cd FeedReader/tests
           python -m unittest discover
 
   WordNet:
