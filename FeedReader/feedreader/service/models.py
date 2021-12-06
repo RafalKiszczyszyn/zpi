@@ -28,4 +28,5 @@ class Channel:
     title: str
     updated: datetime
     lang: str
+    contentNodes: List[str]
     articles: List[Article] = field(default_factory=lambda: [], hash=False)

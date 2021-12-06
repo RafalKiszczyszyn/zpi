@@ -17,7 +17,7 @@ CONFIG = {
         'connection_string': 'mongodb+srv://backend:backend@cluster0.pifu7.mongodb.net/ArticlesClassificationSystem?retryWrites=true&w=majority',
         'database': 'feedreader',
         'collection': 'CachedArticles',
-        'ttl': 7*24*60*60   # 3 days
+        'ttl': 3*24*60*60   # 3 days
     },
 
     # Event queue settings
@@ -54,7 +54,7 @@ TASKS = [
             Step(
                 name='Format',
                 implementation='feedreader.service.tasks.RssConverter',
-                args={'source': 'https://www.polsatnews.pl/rss/polska.xml'}
+                args={'contentNodes': ['.news__description > p']}
             )
         ]
     )
