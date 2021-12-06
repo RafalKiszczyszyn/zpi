@@ -118,9 +118,9 @@ class EventLoop:
                 self._logger.info(f'Publishing {message}')
                 self._publisher.publish(events.Message(body=result.message, mandatory=True, persistence=False))
             except Exception as e:
+                self._logger.info(f'Rejecting {result.event}')
+                self._consumer.reject(result.event, requeue=True)
                 raise self.RecoverableError(error=e)
-            finally:
-                self._publisher.reject(result.event, requeue=True)
 
         self._logger.info(f'Accepting {result.event}')
         self._consumer.accept(event=result.event)
