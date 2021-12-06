@@ -14,6 +14,6 @@ export default {
 			SCRAPS: 'articles.scraps',
 			SENTIMENTS: 'articles.sentiments'
 		},
-		URL: "amqp://guest:guest@localhost",
+		URL: "amqp://admin:admin@rabbtio",
 	}
 }

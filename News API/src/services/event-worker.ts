@@ -5,8 +5,9 @@ import config from '../config'
 import { CreateArticle, UpdateArticleContent } from '../controllers/article.controller';
 
 const connect_worker = async () => {
+	ConsoleLogger("Rabbit url: " + config.RABBIT.URL);
 	const connection: Connection = await connect(config.RABBIT.URL);
-	connection.on('error', (err) => console.log(err))
+	connection.on('error', console.log)
 	
 	// Feed Channel
 	const feedChannel: Channel = await connection.createChannel();

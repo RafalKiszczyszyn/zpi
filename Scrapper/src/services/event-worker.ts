@@ -54,7 +54,7 @@ const publish = (message: IMessagePublished) => {
 const connectWorker = async (onConsume: IConsumer) => {
 	ConsoleLogger("Creating connection with RabbitMQ")
 	connection = await connect(config.RABBIT.URL);
-	connection.on('error', (err) => console.log(err))
+	// connection.on('error', (err) => console.log(err))
 	await connectPublisherWorker();
 	await connectConsumerWorker(onConsume);
 }

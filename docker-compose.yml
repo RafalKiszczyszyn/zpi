@@ -1,0 +1,38 @@
+version: "3.9"
+services: 
+  rabbito:
+    build: ./Event Bus
+    ports:
+      - "15671:15671"
+      - "15672:15672"
+      - "5671:5671"
+      - "5672:5672"
+    networks:
+      - zpi_network
+  # feedreader:
+  #   depends_on:
+  #     - "rabbito"
+  #   build: 
+  #     context: .
+  #     dockerfile: ./FeedReader/Dockerfile
+  #   links:
+  #     - "rabbito:rabbito"
+  articlesapi:
+    depends_on:
+      - "rabbito"
+    build: ./News API
+    links:
+      - "rabbito:rabbito"
+    networks:
+      - zpi_network
+  scrapper:
+    depends_on:
+      - "rabbito"
+    build: ./Scrapper
+    links:
+      - "rabbito:rabbito"
+    networks:
+      - zpi_network
+networks:
+  zpi_network:
+    driver: bridge

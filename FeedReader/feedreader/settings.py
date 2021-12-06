@@ -10,7 +10,7 @@ Application settings.
 """
 CONFIG = {
     # Fetch feed every x seconds.
-    'heartbeat': 15*60,     # 15 min
+    'heartbeat': 10,     # 15 min
 
     # MongoDB database settings
     'database': {
@@ -22,7 +22,7 @@ CONFIG = {
 
     # Event queue settings
     'event_queue': {
-        'host': 'localhost',
+        'host': 'rabbito',
         'vhost': 'main',
         'username': 'admin',
         'password': 'admin'
