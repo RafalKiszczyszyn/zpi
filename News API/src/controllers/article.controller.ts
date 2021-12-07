@@ -8,7 +8,7 @@ interface IArticleQueryParams {
 
 export async function CreateArticle(article: IArticle): Promise<IArticle> {
 	const data = await Article.findOneAndUpdate(
-		{ guid: article.guid }, 
+		{ guid: article.guid },
 		{ ...article },
 		{ upsert: true, new: true, setDefaultsOnInsert: true }
 	);
@@ -31,12 +31,21 @@ export async function UpdateArticleContent({
 interface ISegment {
 	guid: string;
 	sentiment_title?: number;
-	sentiment_description?: number;
+	sentiment_summary?: number;
 	sentiment_content?: number;
 }
 
 export async function UpdateArticleSentiments(segment: ISegment): Promise<IArticle> {
-	const data = await Article.findOneAndUpdate({ guid: segment.guid }, { ...segment });
+	const segmentReduced =
+		Object.keys(segment)
+			.reduce((obj, key: keyof ISegment) => {
+				if (segment[key] !== undefined && key !== 'guid') {
+					return {...obj, [key]: segment[key]};
+				} else {
+					return obj;
+				}
+			}, {});
+	const data = await Article.findOneAndUpdate({ guid: segment.guid }, { ...segmentReduced });
 	return data;
 }
 

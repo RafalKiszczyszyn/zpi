@@ -70,9 +70,9 @@ const onConsumeSentiments = (channel: Channel) => (msg: Message | null) => {
 		ConsoleLogger(`Recived message from sentiments`);
 		message.forEach(segment => UpdateArticleSentiments({
 			guid: segment.id,
-			sentiment_content: segment.segment == 'content' && segment.polarity,
-			sentiment_title: segment.segment == 'title' && segment.polarity,
-			sentiment_description: segment.segment == 'summary' && segment.polarity,
+			sentiment_content: segment.segment == 'content' ? segment.polarity : undefined,
+			sentiment_title: segment.segment == 'title' ? segment.polarity : undefined,
+			sentiment_summary: segment.segment == 'summary' ? segment.polarity : undefined,
 		}));
 		channel.ack(msg);
 	}
