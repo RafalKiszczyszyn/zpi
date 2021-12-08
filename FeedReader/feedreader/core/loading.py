@@ -78,7 +78,7 @@ class IImplementationBuilder(ABC):
     """Interface like abstract class to indicate ImplementationBuilder implementations."""
 
     @abstractmethod
-    def build(self, _class: config.Class, *args, **kwargs):
+    def build(self, _class: config.ClassConfig, *args, **kwargs):
         pass
 
 
@@ -89,9 +89,9 @@ class ImplementationBuilder(IImplementationBuilder):
             raise exceptions.NotASubclass(class_loader, IClassLoader)
         self.class_loader = class_loader
 
-    def build(self, _class: config.Class, *args, **kwargs):
-        if not issubclass(type(_class), config.Class):
-            raise exceptions.NotASubclass(_class, config.Class)
+    def build(self, _class: config.ClassConfig, *args, **kwargs):
+        if not issubclass(type(_class), config.ClassConfig):
+            raise exceptions.NotASubclass(_class, config.ClassConfig)
 
         implementation = self.class_loader.load(_class.implementation, *args, **kwargs, **_class.args)
         return implementation

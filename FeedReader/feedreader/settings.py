@@ -1,5 +1,5 @@
 import pathlib
-from feedreader.core.config import Task, Class, Step
+from feedreader.core.config import ClassConfig
 
 
 BASE = pathlib.Path(__file__).resolve().parent
@@ -10,7 +10,7 @@ Application settings.
 """
 CONFIG = {
     # Fetch feed every x seconds.
-    'heartbeat': 15*60,     # 15 min
+    'heartbeat': 30*60,     #30 min
 
     # MongoDB database settings
     'database': {
@@ -34,28 +34,13 @@ CONFIG = {
     },
 }
 
-EXECUTOR = Class(
+SOURCES = BASE / 'sources.json'
+
+MANAGEMENT_ENABLED = True
+MANAGEMENT_HOST = 'localhost'
+MANAGEMENT_PORT = 5000
+
+EXECUTOR = ClassConfig(
     implementation='feedreader.service.tasks.FeedReader',
     args={'channel': 'feed'}
 )
-
-"""
-List of tasks.
-"""
-TASKS = [
-    Task(
-        name='Polsat',
-        steps=[
-            Step(
-                name='Parse',
-                implementation='feedreader.service.tasks.RssParser',
-                args={'url': 'https://www.polsatnews.pl/rss/polska.xml'}
-            ),
-            Step(
-                name='Format',
-                implementation='feedreader.service.tasks.RssConverter',
-                args={'contentNodes': ['.news__description > p']}
-            )
-        ]
-    )
-]

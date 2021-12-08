@@ -6,7 +6,7 @@ docker build -t feedreader -f /FeedReader/Dockerfile .
 ```
 Then, start the new container with the command:
 ```
-docker run -d --hostname feedreader --name FeedReader --network host feedreader:latest
+docker run -d --hostname feedreader --name FeedReader --network host -p 5000:5000 feedreader:latest
 ```
 
 ## Settings

@@ -25,4 +25,6 @@ COPY ./FeedReader/ssl feedreader/AppData/ssl
 # Add FeedReader to python path
 ENV PYTHONPATH=$PYTHONPATH:/FeedReader
 
+EXPOSE 5000
+
 CMD ["python", "-u", "./feedreader/app.py"]
