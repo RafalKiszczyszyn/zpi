@@ -5,7 +5,7 @@ from dependency_injector.wiring import inject, Provide
 from typing import List
 from zpi_common.services import loggers
 
-from feedreader.core import core, tasks
+from feedreader.core import loading, tasks
 from feedreader import containers
 from feedreader.service import logic, models
 
@@ -68,7 +68,7 @@ class RssParser(TaskStepBase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.url = core.kwarg_lookup(kwargs, 'url', required=True)
+        self.url = loading.kwarg_lookup(kwargs, 'url', required=True)
 
     def execute(self, data):
         self.log(content=f"Parsing RSS from url={self.url}.")
@@ -85,7 +85,7 @@ class RssConverter(TaskStepBase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._contentNodes = core.kwarg_lookup(kwargs, 'contentNodes', required=True)
+        self._contentNodes = loading.kwarg_lookup(kwargs, 'contentNodes', required=True)
 
     def execute(self, data):
         self.log(content='Converting RSS feed to consistent format.')

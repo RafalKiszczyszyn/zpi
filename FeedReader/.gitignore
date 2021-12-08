@@ -9,9 +9,11 @@
 !feedreader
 !feedreader/service
 !feedreader/core
+!feedreader/apirest
 !tests
 !debug
 !**/*.py
+!**/*.json
 
 # App Data
 !feedreader/AppData

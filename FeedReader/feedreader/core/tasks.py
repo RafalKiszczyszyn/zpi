@@ -1,28 +1,30 @@
 from __future__ import annotations
-from abc import abstractmethod, ABC
-from typing import List, Tuple
 
-from feedreader.core import core, config, exceptions
+import json
+from abc import abstractmethod, ABC
+from typing import List, Dict, Tuple, Any
+
+from feedreader.core import loading, config, exceptions
 
 
 class ITaskBuilder(ABC):
 
     @abstractmethod
-    def build(self, task: config.Task):
+    def build(self, task: config.TaskConfig):
         pass
 
 
 class TaskBuilder(ITaskBuilder):
 
-    def __init__(self, implementation_builder: core.IImplementationBuilder):
-        if not issubclass(type(implementation_builder), core.IImplementationBuilder):
-            raise exceptions.NotASubclass(implementation_builder, core.IImplementationBuilder)
+    def __init__(self, implementation_builder: loading.IImplementationBuilder):
+        if not issubclass(type(implementation_builder), loading.IImplementationBuilder):
+            raise exceptions.NotASubclass(implementation_builder, loading.IImplementationBuilder)
 
         self.implementation_builder = implementation_builder
 
-    def build(self, task: config.Task):
-        if isinstance(task, type(config.Task)):
-            raise exceptions.NotAnInstance(task, config.Task)
+    def build(self, task: config.TaskConfig):
+        if isinstance(task, type(config.TaskConfig)):
+            raise exceptions.NotAnInstance(task, config.TaskConfig)
 
         context = f"Task='{task.name}'"
         steps = []
@@ -33,9 +35,9 @@ class TaskBuilder(ITaskBuilder):
         task = Task(context, steps)
         return task
 
-    def _build_task_step(self, step: config.Step, context):
-        if type(step) is not config.Step:
-            raise exceptions.NotAnInstance(step, config.Step)
+    def _build_task_step(self, step: config.StepConfig, context):
+        if type(step) is not config.StepConfig:
+            raise exceptions.NotAnInstance(step, config.StepConfig)
 
         context = f"{context}, Step='{step.name}'"
         implementation = self.implementation_builder.build(step, context=context)
@@ -48,28 +50,34 @@ class TaskBuilder(ITaskBuilder):
 class ITaskExecutorProvider(ABC):
 
     @abstractmethod
-    def load_from_config(self, executor: config.Class, tasks: List[config.Task]) -> ITaskExecutor:
+    def loadFromJsonFile(self, executor: config.ClassConfig, tasks: List[config.TaskConfig]) -> ITaskExecutor:
         pass
 
 
 class TaskExecutorProvider(ITaskExecutorProvider):
 
-    def __init__(self, impl_builder: core.IImplementationBuilder, task_builder: TaskBuilder):
-        if not issubclass(type(impl_builder), core.IImplementationBuilder):
-            raise exceptions.NotASubclass(impl_builder, core.IImplementationBuilder)
+    def __init__(self, impl_builder: loading.IImplementationBuilder, task_builder: TaskBuilder):
+        if not issubclass(type(impl_builder), loading.IImplementationBuilder):
+            raise exceptions.NotASubclass(impl_builder, loading.IImplementationBuilder)
         if not issubclass(type(task_builder), TaskBuilder):
             raise exceptions.NotASubclass(task_builder, TaskBuilder)
 
         self._impl_builder = impl_builder
         self._task_builder = task_builder
 
-    def load_from_config(self, executor: config.Class, tasks: List[config.Task]) -> ITaskExecutor:
-        tasks_ = []
-        for task in tasks:
-            task = self._task_builder.build(task)
-            tasks_.append(task)
+    def loadFromJsonFile(self, executor: config.ClassConfig, fileName: str) -> ITaskExecutor:
+        mapper = config.TaskConfigMapper()
 
-        return self._impl_builder.build(executor, tasks=tasks_)
+        with open(fileName, 'r') as file:
+            taskConfigs_ = json.load(file)
+
+        tasks = []
+        for taskConfig_ in taskConfigs_:
+            taskConfig = mapper.fromDict(taskConfig_)
+            task = self._task_builder.build(taskConfig)
+            tasks.append(task)
+
+        return self._impl_builder.build(executor, tasks=tasks)
 
 
 class ITask(ABC):
@@ -171,5 +179,5 @@ class ITaskStep(ABC):
 
 
 def task_executor_provider_factory():
-    impl_builder = core.implementation_builder_factory()
+    impl_builder = loading.implementation_builder_factory()
     return TaskExecutorProvider(impl_builder, TaskBuilder(impl_builder))

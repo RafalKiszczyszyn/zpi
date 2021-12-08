@@ -9,7 +9,8 @@ from zpi_common.services.implementations import rabbitmq
 import feedreader
 from feedreader import settings
 from feedreader.service import persistance, logic
-from feedreader.core import tasks
+from feedreader.core import loading, tasks
+from feedreader.apirest import management
 
 
 @dataclass
@@ -36,10 +37,16 @@ def create_container():
 
     add_database_connection(container, config_key='database')
     add_event_queue_connection(container, config_key='event_queue')
+    add_management(container)
     add_email_notifications(container, config_key='email_notifications')
 
     container.executor_provider = providers.Callable(
         tasks.task_executor_provider_factory
+    )
+
+    container.task_builder = providers.Factory(
+        tasks.TaskBuilder,
+        implementation_builder=loading.implementation_builder_factory()
     )
 
     container.feed_reader_logic = providers.Factory(
@@ -99,6 +106,18 @@ def add_event_queue_connection(container: containers.DynamicContainer, config_ke
             sslContext=context,
             configProvider=ConfigProvider()
         )
+    )
+
+
+def add_management(container: containers.DynamicContainer):
+    if not settings.MANAGEMENT_ENABLED:
+        container.management_service = providers.Object(None)
+        return
+
+    container.management_service = providers.Factory(
+        management.ManagementService,
+        host=settings.MANAGEMENT_HOST,
+        port=settings.MANAGEMENT_PORT
     )
 
 

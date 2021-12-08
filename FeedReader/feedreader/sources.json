@@ -1,0 +1,23 @@
+[
+    {
+        "name": "Polsat",
+        "steps": [
+            {
+                "name": "Parse",
+                "implementation": "feedreader.service.tasks.RssParser",
+                "args": {
+                    "url": "https://www.polsatnews.pl/rss/polska.xml"
+                }
+            },
+            {
+                "name": "Format",
+                "implementation": "feedreader.service.tasks.RssConverter",
+                "args": {
+                    "contentNodes": [
+                        ".news__description > p"
+                    ]
+                }
+            }
+        ]
+    }
+]

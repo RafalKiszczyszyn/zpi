@@ -1,10 +1,18 @@
+aniso8601==9.0.1
 certifi==2021.5.30
 charset-normalizer==2.0.4
+click==8.0.3
+colorama==0.4.4
 coverage==6.0.1
 dependency-injector==4.36.2
 dnspython==2.1.0
 feedparser==6.0.8
+Flask==2.0.2
+Flask-RESTful==0.3.9
 idna==3.2
+itsdangerous==2.0.1
+Jinja2==3.0.3
+MarkupSafe==2.0.1
 pika==1.2.0
 pymongo==3.12.1
 python-dateutil==2.8.2
@@ -13,4 +21,5 @@ requests==2.26.0
 sgmllib3k==1.0.0
 six==1.16.0
 urllib3==1.26.6
+Werkzeug==2.0.2
 zpi-common==0.1.0
