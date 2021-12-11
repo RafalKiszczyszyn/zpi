@@ -1,5 +1,6 @@
 import pika
-import sys;sys.path.append(r'D:\ZPI\zpi\Libs\Python\Common')
+import pathlib
+import sys; sys.path.append(str(pathlib.Path(__file__).resolve().parent.parent))
 from unittest import TestCase, mock
 from tests import utils
 
