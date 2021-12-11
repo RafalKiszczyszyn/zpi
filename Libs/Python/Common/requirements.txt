@@ -1,1 +1,2 @@
+coverage==6.2
 pika==1.2.0

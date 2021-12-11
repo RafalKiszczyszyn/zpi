@@ -93,7 +93,7 @@ class EmailBroadcastService(IEmailBroadcastService):
                  connection_factory: ISmtpConnectionFactory,
                  credentials: Tuple[str, str],
                  recipients: List[str],
-                 templates: Dict[str, str] = {},
+                 templates: Union[Dict[str, str], None] = None,
                  logger: Union[ILogger, None] = None):
         self._credentials = credentials
         self._recipients = recipients
@@ -101,8 +101,10 @@ class EmailBroadcastService(IEmailBroadcastService):
         self._logger = logger
 
         self._templates: Dict[str, EmailBroadcastService.Template] = {}
-        for name in templates:
-            self._templates[name] = self.Template(name=name, path=templates[name])
+        if templates:
+            self._templates = {
+                name: self.Template(name=name, path=templates[name]) for name in templates
+            }
 
     def error(self, title: str, **tags):
         self._with_formatted_message(template=self.ERROR_TEMPLATE_NAME, title=title, tags=tags)
@@ -112,13 +114,11 @@ class EmailBroadcastService(IEmailBroadcastService):
 
     def _with_formatted_message(self, template: str, title: str, tags: Dict[str, str]):
         message = self._from_template(template=template, tags=tags)
-        plain = message is None
-        if plain:
-            self._warn('Using plain text instead')
+        if message is None:
             message = self._from_default(tags=tags)
-        self._broadcast(title=title, message=message, plain=plain)
+        self._broadcast(title=title, message=message)
 
-    def _broadcast(self, title: str, message: str, plain=False):
+    def _broadcast(self, title: str, message: str):
         with self._connection_factory.create(self._credentials) as connection:
             username, _ = self._credentials
             msg = MIMEMultipart()
@@ -147,7 +147,7 @@ class EmailBroadcastService(IEmailBroadcastService):
             if content.find("{{" + tag + "}}") == -1:
                 self._warn(f"{template_} does not contain tag={{{{{tag}}}}}")
                 return None
-            content = content.replace("{{" + tag + "}}", tags[tag])
+            content = content.replace("{{" + tag + "}}", str(tags[tag]))
 
         return content
 
