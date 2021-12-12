@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from abc import abstractmethod, ABC
-from typing import List, Dict, Tuple, Any
+from typing import List, Tuple
 
 from feedreader.core import loading, config, exceptions
 
