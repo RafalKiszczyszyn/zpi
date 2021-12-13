@@ -6,7 +6,6 @@ from typing import List
 from zpi_common.services import loggers
 
 from feedreader.core import loading, tasks
-from feedreader import containers
 from feedreader.service import logic, models
 
 
@@ -15,8 +14,8 @@ class FeedReader(tasks.TaskExecutorBase):
     def __init__(
             self,
             tasks: List[tasks.ITask],
-            publisher: logic.IFeedReaderLogic = Provide[containers.Container.feed_reader_logic],
-            logger: loggers.ILogger = Provide[containers.Container.logger],
+            publisher: logic.IFeedReaderLogic = Provide["feed_reader_logic"],
+            logger: loggers.ILogger = Provide["logger"],
             *args, **kwargs):
         super().__init__(tasks)
         self._publisher = publisher
@@ -48,7 +47,7 @@ class TaskStepBase(tasks.ITaskStep):
     @inject
     def __init__(self,
                  context,
-                 logger: loggers.ILogger = Provide[containers.Container.logger],
+                 logger: loggers.ILogger = Provide["logger"],
                  *args, **kwargs):
         self._context = context
         self._logger = logger
@@ -61,7 +60,8 @@ class TaskStepBase(tasks.ITaskStep):
         pass
 
     def log(self, content):
-        self._logger.info(f'({self.context}) {content}')
+        if issubclass(type(self._logger), loggers.ILogger):
+            self._logger.info(f'({self.context}) {content}')
 
 
 class RssParser(TaskStepBase):
@@ -75,7 +75,7 @@ class RssParser(TaskStepBase):
         response = requests.get(self.url, headers={'User-Agent': 'FeedReader/0.1'})
         parsed = feedparser.parse(response.content)
 
-        self.log(content=f"Parsed = {len(parsed.entries)} articles from '{parsed.feed.title}'. "
+        self.log(content=f"Parsed {len(parsed.entries)} articles from '{parsed.feed.title}'. "
                  f"Last update: {parsed.feed.updated}.")
 
         return parsed

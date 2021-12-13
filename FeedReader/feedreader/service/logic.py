@@ -37,7 +37,7 @@ class FeedReaderLogic(IFeedReaderLogic):
         except FeedReaderLogic.InnerException:
             self._logger.warning(warning='Feed was neither send nor saved.')
         except Exception as e:
-            self._logger.error(message='Unexpected exception in logic:', error=e)
+            self._logger.error(message='Unexpected exception in logic', error=e)
 
     def _publish_feed(self, feed: List[models.Channel]):
         articles_mapped_to_channels = self._create_articles_to_channels_map(feed=feed)
