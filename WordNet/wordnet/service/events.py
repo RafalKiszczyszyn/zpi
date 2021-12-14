@@ -1,12 +1,21 @@
 import asyncio
 import signal
-from typing import Union
+from traceback import TracebackException
+from typing import Union, List
 
 from dependency_injector.wiring import inject, Provide
-from zpi_common.services import events, loggers
+from zpi_common.services import events, loggers, notifications
 
 from wordnet import settings
-from wordnet.service import bindings
+from wordnet.service import bindings as bdgs, functional
+
+
+class InternalException(Exception):
+    pass
+
+
+class FatalException(Exception):
+    pass
 
 
 class EventLoop:
@@ -15,27 +24,9 @@ class EventLoop:
         self._dispose()
         self._loop.stop()
 
-    class RecoverableError(Exception):
-        def __init__(self, error: Exception):
-            self._error = error
-
-        @property
-        def error(self):
-            return self._error
-
-    class EventReturned(Exception):
-        pass
-
-    class UnknownResult(Exception):
-        def __init__(self, topic):
-            super().__init__(f"Topic='{topic}': Handler returned unknown result")
-
-    class MissingBinding(Exception):
-        def __init__(self, topic):
-            super().__init__(f"Topic='{topic}': Missing binding")
-
     @inject
-    def __init__(self, connection_factory: events.IConnectionFactory = Provide[events.IConnectionFactory.__name__],
+    def __init__(self,
+                 connection_factory: events.IConnectionFactory = Provide[events.IConnectionFactory.__name__],
                  logger: loggers.ILogger = Provide[loggers.ILogger.__name__]):
         signal.signal(signal.SIGTERM, self.handleTerminationSignal)
 
@@ -46,7 +37,6 @@ class EventLoop:
         self._connection: Union[events.IConnection, None] = None
         self._publisher: Union[events.IChannel, None] = None
         self._consumer: Union[events.IChannel, None] = None
-        self._bindings = bindings.bindings()
 
     def start(self):
         self._loop.run_until_complete(self._run())
@@ -70,65 +60,141 @@ class EventLoop:
         while not stopped:
             try:
                 await self._consume()
-            except self.RecoverableError as e:
-                self._logger.error('Exception caught when consuming events', error=e)
-            except self.EventReturned:
-                self._logger.warning('Event was requeued')
+            except InternalException:
+                pass
             finally:
                 self._dispose()
-            self._logger.info(f'Retrying in {settings.RESTART} seconds')
-            await asyncio.sleep(settings.RESTART)
+            await self._sleep(settings.RESTART)
+
+    async def _sleep(self, seconds: int):
+        self._logger.info(f'Event Loop state changed into sleep state. Wake up in {seconds} seconds')
+        await asyncio.sleep(seconds)
 
     async def _consume(self):
         await self._connect()
-        self._logger.info('Started consuming events')
+        self._logger.info('Starting consuming events')
         for event in self._consumer.consume():
-            await self._handle_event(event)
+            self._logger.info(f'Received {event}')
+            dispatcher = EventDispatcher(
+                bindings=bdgs.bindings(),
+                consumer=self._consumer,
+                publisher=self._publisher)
+            result = dispatcher.dispatch(event)
+            await self._handleDispatchingResult(event, result)
 
     async def _connect(self):
-        self._logger.info('Connected with an event queue')
+        self._logger.info('Attempting connection with an event queue')
         try:
             self._connection = self._connection_factory.create()
-            self._publisher = self._connection.publisher(topic='sentiments')
-            self._consumer = self._connection.consumer(topics=list({binding.topic for binding in self._bindings}))
+            self._publisher = self._connection.publisher(topic=settings.FANOUT)
+            self._consumer = self._connection.consumer(topics=list({binding.topic for binding in bdgs.bindings()}))
         except Exception as e:
-            raise self.RecoverableError(error=e)
+            self._logger.error("Connection with an event queue failed", error=e)
+            await self._notify("WordNet Service Failure when connecting", error=e)
+            raise InternalException()
+        self._logger.info('Successfully connected with an event queue')
 
-    async def _handle_event(self, event: events.Event):
-        self._logger.info(f'Received {event}')
-        result = await self._dispatch(event)
+    async def _handleDispatchingResult(self, event: events.Event, result: functional.Result):
+        if result.isSuccess:
+            if result.value:
+                self._logger.info(f'Successfully published response to {event}')
+            else:
+                self._logger.warning(f'Response was not sent to {event}')
+            return
 
-        if isinstance(result, events.Accept):
-            await self._accept(result)
-        elif isinstance(result, events.Reject):
-            await self._reject(result)
+        if result.error.isRuntime:
+            self._logger.error("Internal exception raised when consuming events", error=result.error.exception)
+            await self._notify("WordNet Service Failure when consuming", error=result.error.exception)
+            raise InternalException()
         else:
-            raise EventLoop.UnknownResult(topic=event.topic)
+            raise FatalException(result.error.message)
 
-    async def _dispatch(self, event: events.Event) -> events.Result:
-        for binding in self._bindings:
-            if binding.topic == event.topic:
-                return binding.handler.handle(event)
-        raise self.MissingBinding(topic=event.topic)
-
-    async def _accept(self, result: events.Accept):
-        if result.message:
+    @inject
+    async def _notify(
+            self,
+            title: str,
+            error: Union[Exception, None] = None,
+            service: notifications.IEmailBroadcastService = Provide[notifications.IEmailBroadcastService.__name__],
+            **tags):
+        if issubclass(type(service), notifications.IEmailBroadcastService):
+            self._logger.info('Sending email notification')
             try:
-                message = events.Message(body=result.message, mandatory=True, persistence=False)
-                self._logger.info(f'Publishing {message}')
-                self._publisher.publish(events.Message(body=result.message, mandatory=True, persistence=False))
+                service.error(
+                    title=title,
+                    traceback="".join(TracebackException.from_exception(error).format()) if error else "Not provided",
+                    **tags)
             except Exception as e:
-                self._logger.info(f'Rejecting {result.event}')
-                self._consumer.reject(result.event, requeue=True)
-                raise self.RecoverableError(error=e)
+                self._logger.error("Failed to send email notification", error=e)
 
-        self._logger.info(f'Accepting {result.event}')
-        self._consumer.accept(event=result.event)
 
-    async def _reject(self, result: events.Reject):
-        self._logger.info(f'Rejecting {result.event}')
-        if result.requeue:
-            self._consumer.reject(event=result.event, requeue=True)
-            raise EventLoop.EventReturned()
-        else:
-            self._consumer.reject(event=result.event, requeue=False)
+class EventDispatcher:
+
+    def __init__(self,
+                 bindings: List[bdgs.Binding],
+                 consumer: events.IChannel,
+                 publisher: events.IChannel):
+        self.bindings = bindings
+        self.consumer = consumer
+        self.publisher = publisher
+
+    def dispatch(self, event: events.Event) -> functional.Result:
+        return self.matchBinding(event) \
+            .then(self.handleEvent) \
+            .then(self.handleResponse)
+
+    def matchBinding(self, event: events.Event) -> functional.Result:
+        for binding in self.bindings:
+            if binding.topic == event.topic:
+                return functional.Result.success((event, binding))
+        return self.rejectEvent(response=events.Reject(event, requeue=True), cause=functional.Error(
+            message=f"Missing binding with topic={event.topic}",
+            isRuntime=False))
+
+    def handleEvent(self, event: events.Event, binding: bdgs.Binding) -> functional.Result:
+        try:
+            return functional.Result.success(binding.handler.handle(event))
+        except Exception as e:
+            return self.rejectEvent(response=events.Reject(event, requeue=True), cause=functional.Error(
+                message="Failed to handle an event",
+                isRuntime=True,
+                exception=e))
+
+    def handleResponse(self, response: events.Result) -> functional.Result:
+        if isinstance(response, events.Accept):
+            return self.acceptEvent(response)
+        elif isinstance(response, events.Reject):
+            return self.rejectEvent(response)
+        return functional.Result.failure(functional.Error(
+            message="Unknown response returned by handler",
+            isRuntime=False))
+
+    def acceptEvent(self, response: events.Accept) -> functional.Result:
+        return self.publishResponse(response) \
+            .then(lambda isPublished: self.sendAcceptAck(response, isPublished))
+
+    def publishResponse(self, response: events.Accept) -> functional.Result:
+        if response.message:
+            message = events.Message(body=response.message, mandatory=True, persistence=False)
+            try:
+                self.publisher.publish(message)
+                return functional.Result.success(True)
+            except Exception as e:
+                return self.rejectEvent(
+                    events.Reject(event=response.event, requeue=True),
+                    cause=functional.Error(
+                        message=f"Failed to publish {message} as a response to {response.event}",
+                        isRuntime=True,
+                        exception=e))
+
+        return functional.Result.success(False)
+
+    def sendAcceptAck(self, response: events.Accept, isPublished: bool) -> functional.Result:
+        self.consumer.accept(event=response.event)
+        return functional.Result.success(isPublished)
+
+    def rejectEvent(self, response: events.Reject, cause: Union[functional.Error, None] = None) -> functional.Result:
+        self.consumer.reject(event=response.event, requeue=response.requeue)
+        return functional.Result.success(False) \
+            if not response.requeue \
+            else functional.Result.failure(cause if cause else functional.Error(
+                message=f"{response.event} requeued", isRuntime=True))
