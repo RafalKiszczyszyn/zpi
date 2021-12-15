@@ -14,7 +14,7 @@ class Binding:
 
 def bindings() -> List[Binding]:
     return [
-        Binding(topic='feed', handler=handlers.FeedQueueHandler()),
-        Binding(topic='scraps', handler=handlers.ScrapsQueueHandler()),
-        Binding(topic='', handler=handlers.DebuggingQueueHandler())
+        Binding(topic='feed', handler=handlers.FeedEventHandler()),
+        Binding(topic='scraps', handler=handlers.ScrapsEventHandler()),
+        Binding(topic='', handler=handlers.ScrapsEventHandler())
     ]

@@ -20,6 +20,8 @@
 
 # Tests
 !tests
+!tests/service
+!tests/nlp
 
 # Exclude all python files
 !**/*.py
