@@ -23,11 +23,7 @@ class TaskBuilder(ITaskBuilder):
         self.implementation_builder = implementation_builder
 
     def build(self, task: config.TaskConfig):
-<<<<<<< HEAD
         if not isinstance(task, config.TaskConfig):
-=======
-        if isinstance(task, type(config.TaskConfig)):
->>>>>>> 9d1372c7bc15b97a1c7151c5452c237f88491ecf
             raise exceptions.NotAnInstance(task, config.TaskConfig)
 
         context = f"Task='{task.name}'"
@@ -40,12 +36,6 @@ class TaskBuilder(ITaskBuilder):
         return task
 
     def _build_task_step(self, step: config.StepConfig, context):
-<<<<<<< HEAD
-=======
-        if type(step) is not config.StepConfig:
-            raise exceptions.NotAnInstance(step, config.StepConfig)
-
->>>>>>> 9d1372c7bc15b97a1c7151c5452c237f88491ecf
         context = f"{context}, Step='{step.name}'"
         implementation = self.implementation_builder.build(step, context=context)
         if not issubclass(type(implementation), ITaskStep):
@@ -63,19 +53,11 @@ class ITaskExecutorProvider(ABC):
 
 class TaskExecutorProvider(ITaskExecutorProvider):
 
-<<<<<<< HEAD
     def __init__(self, impl_builder: loading.IImplementationBuilder, task_builder: ITaskBuilder):
         if not issubclass(type(impl_builder), loading.IImplementationBuilder):
             raise exceptions.NotASubclass(impl_builder, loading.IImplementationBuilder)
         if not issubclass(type(task_builder), ITaskBuilder):
             raise exceptions.NotASubclass(task_builder, ITaskBuilder)
-=======
-    def __init__(self, impl_builder: loading.IImplementationBuilder, task_builder: TaskBuilder):
-        if not issubclass(type(impl_builder), loading.IImplementationBuilder):
-            raise exceptions.NotASubclass(impl_builder, loading.IImplementationBuilder)
-        if not issubclass(type(task_builder), TaskBuilder):
-            raise exceptions.NotASubclass(task_builder, TaskBuilder)
->>>>>>> 9d1372c7bc15b97a1c7151c5452c237f88491ecf
 
         self._impl_builder = impl_builder
         self._task_builder = task_builder

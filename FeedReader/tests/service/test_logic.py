@@ -2,6 +2,8 @@ import dataclasses
 import json
 from datetime import datetime
 from unittest import TestCase, mock
+import pathlib
+import sys;sys.path.append(str(pathlib.Path(__file__).resolve().parent.parent.parent))
 
 from zpi_common.services import events
 

@@ -4,7 +4,7 @@ import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from traceback import TracebackException
-from typing import Union
+from typing import Union, Tuple
 from werkzeug.serving import make_server
 
 from dependency_injector.wiring import Provide, inject

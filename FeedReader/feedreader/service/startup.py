@@ -4,12 +4,8 @@ import signal
 from dependency_injector.wiring import Provide, inject
 from zpi_common.services import loggers
 
-<<<<<<< HEAD
 from feedreader import containers
 from feedreader.settings import settings
-=======
-from feedreader import containers, settings
->>>>>>> 9d1372c7bc15b97a1c7151c5452c237f88491ecf
 from feedreader.apirest import management
 from feedreader.core import tasks
 

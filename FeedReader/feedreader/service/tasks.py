@@ -6,10 +6,6 @@ from typing import List
 from zpi_common.services import loggers
 
 from feedreader.core import loading, tasks
-<<<<<<< HEAD
-=======
-from feedreader import containers
->>>>>>> 9d1372c7bc15b97a1c7151c5452c237f88491ecf
 from feedreader.service import logic, models
 
 
