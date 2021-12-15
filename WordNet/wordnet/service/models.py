@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum
 
 
 @dataclass(frozen=True)
@@ -14,8 +15,14 @@ class Article:
     summary: str
 
 
+class SegmentType(Enum):
+    TITLE = 'title'
+    SUMMARY = 'summary'
+    CONTENT = 'content'
+
+
 @dataclass(frozen=True)
-class Segment:
+class AnnotatedSegment:
     id: str
-    segment: str
+    segment: SegmentType
     polarity: float

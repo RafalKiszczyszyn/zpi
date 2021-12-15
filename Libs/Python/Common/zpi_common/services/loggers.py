@@ -1,6 +1,7 @@
 from datetime import datetime
 from traceback import TracebackException
 from abc import ABC, abstractmethod
+from typing import Union
 
 
 class ILogger(ABC):
@@ -26,9 +27,11 @@ class StdoutLogger(ILogger):
     def warning(self, warning: str):
         self.print(tag='[WARNING]', message=warning)
 
-    def error(self, message, error: Exception):
-        traceback = "".join(TracebackException.from_exception(error).format())
-        self.print(tag='[ERROR]', message=f'{message}:\n{traceback}')
+    def error(self, message, error: Union[Exception, None] = None):
+        if error:
+            traceback = "".join(TracebackException.from_exception(error).format())
+            message = f'{message}:\n{traceback}'
+        self.print(tag='[ERROR]', message=message)
 
     @staticmethod
     def print(tag, message):

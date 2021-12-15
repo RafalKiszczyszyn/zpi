@@ -37,7 +37,7 @@ def connection() -> rabbitmq.RabbitMqConnectionFactory:
     ))
 
 
-def add_services(container: containers.DynamicContainer):
+def addServices(container: containers.DynamicContainer):
     container.ILogger = providers.Factory(
         loggers.StdoutLogger
     )
@@ -59,20 +59,21 @@ def add_services(container: containers.DynamicContainer):
     container.INlpService = providers.Factory(
         nlp.ClarinNlpService,
         user=settings.CLARIN_USER,
+        algorithm=nlp.Average(),
         manager=persistence.WorkspaceManager(wd=str(settings.CLARIN_WORKING_DIRECTORY))
     )
 
 
 def startup():
     container = containers.DynamicContainer()
-    add_services(container)
+    addServices(container)
     container.wire(packages=['wordnet.service'])
     start()
 
 
 @inject
 def start(logger: loggers.ILogger = Provide[loggers.ILogger.__name__],
-          email_service: Union[notifications.IEmailBroadcastService, None]
+          emailService: Union[notifications.IEmailBroadcastService, None]
           = Provide[notifications.IEmailBroadcastService.__name__]):
     logger.info('Service started')
     try:
@@ -81,14 +82,22 @@ def start(logger: loggers.ILogger = Provide[loggers.ILogger.__name__],
         EventLoop().stop()
     except Exception as e:
         from traceback import TracebackException
-        logger.error('Unrecoverable internal exception was thrown', error=e)
-        if email_service:
-            try:
-                logger.info('Sending email notification')
-                email_service.info(
-                    title='WordNet Service Failure',
-                    message='Unrecoverable internal exception was thrown',
-                    traceback="".join(TracebackException.from_exception(e).format()))
-            except Exception as e:
-                logger.error("Failed to send email notification", error=e)
+        logger.error('Fatal exception was thrown', error=e)
+        notify(emailService=emailService, logger=logger, error=e)
     logger.info('Service stopped')
+
+
+def notify(
+        emailService: notifications.IEmailBroadcastService,
+        logger: loggers.ILogger,
+        error: Exception):
+    from traceback import TracebackException
+    if emailService:
+        try:
+            logger.info('Sending email notification')
+            emailService.info(
+                title='WordNet Service Fatal Failure',
+                message='Unrecoverable fatal exception was thrown. Service stopped!',
+                traceback="".join(TracebackException.from_exception(error).format()))
+        except Exception as e:
+            logger.error("Failed to send email notification", error=e)
