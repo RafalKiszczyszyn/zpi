@@ -1,5 +1,5 @@
 import pathlib
-import sys; sys.path.append(pathlib.Path(__file__).parent.parent.parent.resolve())
+import sys; sys.path.append(str(pathlib.Path(__file__).parent.parent.parent.resolve()))
 
 from contextlib import contextmanager
 from unittest import TestCase, mock
