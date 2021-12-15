@@ -7,8 +7,8 @@ from zpi_common.services import loggers, notifications
 from zpi_common.services.implementations import rabbitmq
 
 import feedreader
-from feedreader import settings
-from feedreader.service import persistance, logic
+from feedreader.settings import settings
+from feedreader.service import persistence, logic
 from feedreader.core import loading, tasks
 from feedreader.apirest import management
 
@@ -16,6 +16,7 @@ from feedreader.apirest import management
 @dataclass
 class AppSettings:
     heartbeat: int
+    sources: str
 
 
 Container = containers.DynamicContainer()
@@ -28,7 +29,8 @@ def create_container():
 
     container.settings = providers.Factory(
         AppSettings,
-        heartbeat=container.config.heartbeat.as_int()
+        heartbeat=container.config.heartbeat.as_int(),
+        sources=settings.SOURCES
     )
 
     container.logger = providers.Factory(
@@ -62,7 +64,7 @@ def create_container():
 
 def add_database_connection(container: containers.DynamicContainer, config_key):
     container.articles_da = providers.Factory(
-        persistance.ArticlesDataAccess,
+        persistence.ArticlesDataAccess,
         url=settings.CONFIG[config_key]['connection_string'],
         db_name=settings.CONFIG[config_key]['database'],
         collection_name=settings.CONFIG[config_key]['collection'],
@@ -70,7 +72,7 @@ def add_database_connection(container: containers.DynamicContainer, config_key):
     )
 
     container.articles_repository = providers.Factory(
-        persistance.ArticlesRepository,
+        persistence.ArticlesRepository,
         data_access=container.articles_da
     )
 
@@ -128,7 +130,6 @@ def add_email_notifications(container: containers.DynamicContainer, config_key):
 
     container.email_service = providers.Factory(
         notifications.EmailBroadcastService,
-        connection=container.smtp_connection,
         credentials=(settings.CONFIG[config_key]['credentials']['username'],
                      settings.CONFIG[config_key]['credentials']['password']),
         recipients=settings.CONFIG[config_key]['recipients'],

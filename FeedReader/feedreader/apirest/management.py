@@ -11,7 +11,6 @@ from dependency_injector.wiring import Provide, inject
 from flask import Flask, request
 from flask_restful import Resource, Api
 
-from feedreader import settings
 from feedreader.core import config, tasks
 
 
@@ -21,17 +20,25 @@ class Error:
     traceback: Union[str, None] = None
 
 
+class Request:
+
+    @classmethod
+    def getJson(cls):
+        return request.get_json(force=True)
+
+
 class Tasks(Resource):
 
     @inject
-    def __init__(self, taskBuilder: tasks.ITaskBuilder = Provide['task_builder']):
+    def __init__(self,
+                 appSettings=Provide['settings'],
+                 taskBuilder: tasks.ITaskBuilder = Provide['task_builder']):
+        self._appSettings = appSettings
         self._taskBuilder = taskBuilder
         self._taskMapper = config.TaskConfigMapper()
 
-    @classmethod
-    def get(cls):
-        with open(settings.SOURCES, 'r') as file:
-            tasks_ = json.load(file)
+    def get(self):
+        tasks_ = self._loadTasksFromConfig()
         return tasks_, 200
 
     def post(self):
@@ -39,25 +46,19 @@ class Tasks(Resource):
         if error:
             return dataclasses.asdict(error), 400
 
-        with open(settings.SOURCES, 'r+') as file:
-            tasks_ = json.load(file)
-            tasks_.append(self._taskMapper.toDict(task))
-
-            file.seek(0)
-            json.dump(tasks_, file, indent=4)
+        tasks_ = self._loadTasksFromConfig()
+        tasks_.append(self._taskMapper.toDict(task))
+        self._saveTasksToConfig(tasks_)
 
         return None, 201
 
-    @classmethod
-    def delete(cls, taskName: str = 'Undefined'):
+    def delete(self, taskName: str = 'Undefined'):
         if taskName == 'Undefined':
             return None, 404
 
-        with open(settings.SOURCES, 'r') as file:
-            tasks_ = json.load(file)
+        tasks_ = self._loadTasksFromConfig()
         filtered = list(filter(lambda task: task['name'].lower() != taskName.lower(), tasks_))
-        with open(settings.SOURCES, 'w') as file:
-            json.dump(filtered, file, indent=4)
+        self._saveTasksToConfig(filtered)
 
         deleted = len(tasks_) - len(filtered)
         if deleted == 0:
@@ -65,14 +66,26 @@ class Tasks(Resource):
         else:
             return deleted, 200
 
+    def _loadTasksFromConfig(self):
+        with open(self._appSettings.sources, 'r') as file:
+            try:
+                tasks_ = json.load(file)
+                if not isinstance(tasks_, list):
+                    return []
+            except json.JSONDecodeError:
+                return []
+        return tasks_
+
+    def _saveTasksToConfig(self, tasks_):
+        with open(self._appSettings.sources, 'w') as file:
+            json.dump(tasks_, file, indent=4)
+
     def _validate(self) -> Tuple[Union[config.TaskConfig, None], Union[Error, None]]:
-        task_ = request.get_json(force=True)
+        task_ = Request().getJson()
         try:
             task = self._taskMapper.fromDict(task_)
         except KeyError as e:
             return None, Error(message=str(e).strip('"'))
-        except Exception as e:
-            return None, Error(message=f'Invalid request. Exception: {e}')
 
         try:
             self._taskBuilder.build(task)

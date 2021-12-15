@@ -6,7 +6,7 @@ from traceback import TracebackException
 from typing import List, Dict, Tuple, Iterable, Union
 from zpi_common.services import loggers, events, notifications
 
-from feedreader.service import persistance, models
+from feedreader.service import persistence, models
 
 
 class IFeedReaderLogic(ABC):
@@ -18,11 +18,11 @@ class IFeedReaderLogic(ABC):
 
 class FeedReaderLogic(IFeedReaderLogic):
 
-    class InnerException(Exception):
+    class InternalException(Exception):
         pass
 
     def __init__(self,
-                 articles_repository: persistance.IArticlesRepository,
+                 articles_repository: persistence.IArticlesRepository,
                  event_queue_connection_factory: events.IConnectionFactory,
                  logger: loggers.ILogger,
                  email_service: notifications.IEmailBroadcastService):
@@ -34,7 +34,7 @@ class FeedReaderLogic(IFeedReaderLogic):
     def publish_feed(self, feed: List[models.Channel]):
         try:
             self._publish_feed(feed=feed)
-        except FeedReaderLogic.InnerException:
+        except FeedReaderLogic.InternalException:
             self._logger.warning(warning='Feed was neither send nor saved.')
         except Exception as e:
             self._logger.error(message='Unexpected exception in logic', error=e)
@@ -94,7 +94,7 @@ class FeedReaderLogic(IFeedReaderLogic):
     def _exc(self, info: str, e: Exception):
         self._logger.error(message=info, error=e)
         self._send_email(info=info, e=e)
-        raise FeedReaderLogic.InnerException()
+        raise FeedReaderLogic.InternalException()
 
     def _send_email(self, info: str, e: Exception):
         if self._email_service is None:

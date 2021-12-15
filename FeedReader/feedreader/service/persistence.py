@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABC
 from typing import List
 
-from pymongo import MongoClient
+from pymongo import mongo_client
 from pymongo.collection import Collection
 
 from feedreader.service import models
@@ -32,7 +32,7 @@ class ArticlesDataAccess(IArticlesDataAccess):
 
         client, collection = self._connect()
         docs = map(self._map_to_doc, articles)
-        collection.insert_many(docs)
+        collection.insert_many(list(docs))
         client.close()
 
     def find_existing_ids(self, indices: List[str]) -> List[str]:
@@ -41,8 +41,8 @@ class ArticlesDataAccess(IArticlesDataAccess):
         client.close()
         return list(map(lambda doc: doc["_id"], docs))
 
-    def _connect(self) -> (MongoClient, Collection):
-        client = MongoClient(self._url)
+    def _connect(self) -> (mongo_client.MongoClient, Collection):
+        client = mongo_client.MongoClient(self._url)
         db = client[self._db_name]
         collection = db[self._collection_name]
         collection.create_index("published", name="published_index", expireAfterSeconds=self._ttl)

@@ -7,10 +7,20 @@
 
 # Code
 !feedreader
+!feedreader/env
+!feedreader/env/dev
+!feedreader/env/test
+!feedreader/env/production
 !feedreader/service
 !feedreader/core
 !feedreader/apirest
+
+# Tests
 !tests
+!tests/apirest
+!tests/core
+!tests/service
+
 !debug
 !**/*.py
 !**/*.json

@@ -1,11 +1,11 @@
 import asyncio
 import signal
-from contextlib import contextmanager
 
 from dependency_injector.wiring import Provide, inject
 from zpi_common.services import loggers
 
-from feedreader import containers, settings
+from feedreader import containers
+from feedreader.settings import settings
 from feedreader.apirest import management
 from feedreader.core import tasks
 
