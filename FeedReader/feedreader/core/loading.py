@@ -1,6 +1,6 @@
 import importlib
 from abc import ABC, abstractmethod
-from inspect import signature, isclass
+from inspect import signature
 
 from feedreader.core import config, exceptions
 
@@ -48,8 +48,6 @@ class IClassLoader(ABC):
 class ClassLoader(IClassLoader):
 
     def __init__(self, invoker: ICallableInvoker):
-        if not issubclass(type(invoker), ICallableInvoker):
-            raise exceptions.NotASubclass(invoker, ICallableInvoker)
         self.invoker = invoker
 
     def load(self, full_class_name: str, *args, **kwargs):
@@ -68,9 +66,6 @@ class ClassLoader(IClassLoader):
         class_ = getattr(module, class_name)
         instance = self.invoker.invoke(class_, *args, **kwargs)
 
-        if not isclass(type(instance)):
-            raise exceptions.NotAnInstance(instance, type(object))
-
         return instance
 
 
@@ -85,8 +80,6 @@ class IImplementationBuilder(ABC):
 class ImplementationBuilder(IImplementationBuilder):
 
     def __init__(self, class_loader: IClassLoader):
-        if not issubclass(type(class_loader), IClassLoader):
-            raise exceptions.NotASubclass(class_loader, IClassLoader)
         self.class_loader = class_loader
 
     def build(self, _class: config.ClassConfig, *args, **kwargs):
